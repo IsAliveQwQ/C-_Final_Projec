@@ -877,6 +877,9 @@ namespace WinFormsApp1
                     // 更新數據源
                     dgvBorrowRecord.DataSource = dt;
                     
+                    // 確保在數據綁定後立即設定欄位屬性和按鈕狀態
+                    SetBorrowGridSettingsAndButtonStatus(); // 新增此行，確保設置執行
+
                     // 更新分頁標籤和按鈕狀態
                     lblBorrowPage.Text = $"第 {currentBorrowPage} 頁";
                     btnBorrowPrev.Enabled = currentBorrowPage > 1;
@@ -941,7 +944,7 @@ namespace WinFormsApp1
                 }
             }
 
-            // 添加或更新操作按鈕列
+            // 添加或獲取 "操作" 按鈕列
             var operationCol = dgvBorrowRecord.Columns.OfType<DataGridViewButtonColumn>().FirstOrDefault(c => c.Name == "操作");
             if (operationCol == null)
             {
@@ -949,14 +952,14 @@ namespace WinFormsApp1
                 {
                     Name = "操作",
                     HeaderText = "操作",
-                    UseColumnTextForButtonValue = true, // 修改為 true
+                    UseColumnTextForButtonValue = false, // 設定為 false，與預約紀錄一致
                     Width = 80
                 };
                 dgvBorrowRecord.Columns.Add(operationCol);
             }
             else
             {
-                operationCol.UseColumnTextForButtonValue = true; // 確保屬性正確設定
+                operationCol.UseColumnTextForButtonValue = false; // 確保屬性正確設定為 false
             }
 
             // 更新按鈕狀態
@@ -970,7 +973,6 @@ namespace WinFormsApp1
                 {
                     string status = statusCell.Value?.ToString() ?? "";
                     operationCell.Value = status == "未還" ? "還書" : "已還";
-                    operationCell.Style.ForeColor = status == "未還" ? System.Drawing.Color.DarkBlue : System.Drawing.Color.Gray;
                     operationCell.ReadOnly = status != "未還";
                 }
             }
@@ -1108,14 +1110,14 @@ namespace WinFormsApp1
                 {
                     Name = "操作",
                     HeaderText = "操作",
-                    UseColumnTextForButtonValue = true, // 修改為 true，使用 Value 作為按鈕文字
+                    UseColumnTextForButtonValue = false, // 設定為 false，與預約紀錄一致
                     Width = 80
                 };
                 dgvBorrowRecord.Columns.Add(operationCol);
             }
             else
             {
-                operationCol.UseColumnTextForButtonValue = true; // 確保屬性正確設定
+                operationCol.UseColumnTextForButtonValue = false; // 確保屬性正確設定為 false
             }
 
             // 根據狀態設定按鈕文字和啟用狀態
@@ -1134,13 +1136,11 @@ namespace WinFormsApp1
                     if (status == "未還")
                     {
                         operationCell.Value = "還書";
-                        operationCell.Style.ForeColor = System.Drawing.Color.DarkBlue;
                         operationCell.ReadOnly = false;
                     }
                     else
                     {
                         operationCell.Value = "已還";
-                        operationCell.Style.ForeColor = System.Drawing.Color.Gray;
                         operationCell.ReadOnly = true;
                     }
                 }
@@ -1406,6 +1406,8 @@ LEFT JOIN (
 
             // 只綁定必要的事件
             dgvBorrowRecord.DataBindingComplete += DgvBorrowRecord_DataBindingComplete;
+            // 綁定 CellContentClick 事件處理程式
+            dgvBorrowRecord.CellContentClick += DgvBorrowRecord_CellContentClick; // 新增此行
 
             tabPageBorrow.Controls.Add(dgvBorrowRecord);
             tabPageBorrow.Controls.Add(panelPaging);
@@ -2205,6 +2207,62 @@ WHERE 1=1";
             catch (Exception ex)
             {
                 MessageBox.Show("操作失敗：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // 新增借閱紀錄 DataGridView 的 CellContentClick 事件處理程式
+        private async void DgvBorrowRecord_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // 確保點擊的是「操作」欄位且不是新行
+            if (e.RowIndex < 0 || dgvBorrowRecord.Columns[e.ColumnIndex].Name != "操作") return;
+
+            var row = dgvBorrowRecord.Rows[e.RowIndex];
+            var statusCell = row.Cells["status"];
+            var operationCell = row.Cells["操作"] as DataGridViewButtonCell;
+
+            // 確保儲存格存在且狀態為「未還」
+            if (statusCell != null && operationCell != null)
+            {
+                string status = statusCell.Value?.ToString() ?? "";
+
+                if (status == "未還")
+                {
+                    // 獲取借閱 ID
+                    int borrowId = 0;
+                    if (dgvBorrowRecord.Columns.Contains("borrow_id") && row.Cells["borrow_id"] != null && row.Cells["borrow_id"].Value != null)
+                    {
+                         int.TryParse(row.Cells["borrow_id"].Value.ToString(), out borrowId);
+                    }
+                    
+                    if (borrowId == 0) return; // 無效的借閱 ID
+
+                    try
+                    {
+                        // 執行還書操作：更新 borrow_record 表的 return_date
+                        string sql = "UPDATE borrow_record SET return_date = NOW() WHERE borrow_id = @bid";
+                        int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@bid", borrowId)
+                        }));
+
+                        if (rowsAffected > 0)
+                        {
+                            MessageBox.Show("還書成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            // 刷新借閱紀錄列表
+                            await RefreshBorrowRecordsAsync();
+                            // 同步刷新首頁漫畫列表，因為還書會影響其狀態
+                            await RefreshUserComicsGrid("", "全部"); // 使用預設搜尋條件刷新
+                        }
+                        else
+                        {
+                            MessageBox.Show("還書失敗或紀錄已處理！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("還書操作發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                // 如果狀態不是「未還」，則按鈕是只讀的，不執行任何操作
             }
         }
     }
