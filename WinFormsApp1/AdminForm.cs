@@ -38,6 +38,7 @@ namespace WinFormsApp1
             InitializeComponent();
             this.currentUserId = userId;
             this.Text = $"管理員介面 (用戶 ID: {userId})";
+            EnsureUserActionButtons();
             InitializeEventHandlers();
         }
 
@@ -74,7 +75,15 @@ namespace WinFormsApp1
             this.dgvReserve.CellContentClick += new DataGridViewCellEventHandler(this.dgvReserve_CellContentClick);
 
             // 表單載入事件
-            this.Load += async (s, e) => await InitializeAllDataAsync();
+            this.Load += async (s, e) =>
+            {
+                await RefreshUserRecordsAsync();
+                await RefreshComicRecordsAsync();
+                currentBorrowPage = 1;
+                currentReservePage = 1;
+                await RefreshBorrowRecordsAsync();
+                await RefreshReserveRecordsAsync();
+            };
         }
 
         // 新增漫畫按鈕點擊事件處理器
@@ -134,14 +143,9 @@ namespace WinFormsApp1
         {
             try
               {
-                // 查詢所有用戶
-                string sqlUser = "SELECT user_id AS 用戶ID, username AS 帳號, role AS 角色 FROM user ORDER BY user_id";
-                var dtUser = await Task.Run(() => DBHelper.ExecuteQuery(sqlUser));
-                this.Invoke((MethodInvoker)delegate {
-                    dgvUser.DataSource = dtUser;
-                    EnsureUserActionButtons();
-                    SetUserGridColumnWidths();
-                });
+                // 初始化載入時，呼叫 RefreshUserRecordsAsync 獲取所有用戶
+                await RefreshUserRecordsAsync();
+
                 // 查詢所有漫畫
                 string sqlComic = "SELECT comic_id AS 書號, isbn AS ISBN, title AS 書名, author AS 作者, publisher AS 出版社, category AS 分類 FROM comic ORDER BY comic_id";
                 var dtComic = await Task.Run(() => DBHelper.ExecuteQuery(sqlComic));
@@ -161,7 +165,7 @@ namespace WinFormsApp1
         }
 
         // 新增用戶
-        private void btnAddUser_Click(object sender, System.EventArgs e)
+        private async void btnAddUser_Click(object sender, System.EventArgs e)
         {
             using (AddUserForm addUserForm = new AddUserForm())
             {
@@ -185,7 +189,8 @@ namespace WinFormsApp1
                         if (rows > 0)
                         {
                             MessageBox.Show($"新增用戶成功！帳號：{username} (資料庫：{GetCurrentDatabaseName()})", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            AdminForm_Load(null, null); // 重新載入用戶表格
+                            // 新增用戶成功後，呼叫 RefreshUserRecordsAsync 刷新用戶列表 (獲取所有用戶)
+                            await RefreshUserRecordsAsync();
                         }
                         else
                         {
@@ -252,11 +257,12 @@ namespace WinFormsApp1
             }
         }
 
+        // 用戶搜尋
         private async void btnUserSearch_Click(object sender, EventArgs e)
         {
-            currentUserSearchKeyword = txtSearchUser.Text.Trim();
-            currentUserPage = 1;
-            await RefreshUserRecordsAsync();
+            string searchTerm = txtSearchUser.Text.Trim();
+            // 搜尋用戶，傳入關鍵字，不應用分頁，獲取所有符合條件的結果
+            await RefreshUserRecordsAsync(keyword: searchTerm, applyPagination: false);
         }
 
         private async void btnComicSearch_Click(object sender, EventArgs e)
@@ -564,6 +570,7 @@ namespace WinFormsApp1
 
         private async Task InitializeAllDataAsync()
         {
+            // 此方法不再用於 AdminForm_Load，但可能在其他地方被呼叫，暫時保留，但其邏輯已轉移
             try
             {
                 await Task.WhenAll(
@@ -580,7 +587,10 @@ namespace WinFormsApp1
         }
 
         #region 用戶管理分頁
-        private async Task RefreshUserRecordsAsync()
+        private async Task RefreshUserRecordsAsync(
+            string keyword = null, 
+            bool applyPagination = false,
+            int page = 1)
         {
             try
             {
@@ -589,20 +599,33 @@ namespace WinFormsApp1
                              WHERE 1=1";
                 var paramList = new List<MySqlParameter>();
 
-                if (!string.IsNullOrWhiteSpace(currentUserSearchKeyword))
+                // 如果提供了關鍵字，並且不為空白，則應用搜尋條件
+                if (!string.IsNullOrWhiteSpace(keyword))
                 {
                     sql += " AND username LIKE @keyword";
-                    paramList.Add(new MySqlParameter("@keyword", "%" + currentUserSearchKeyword + "%"));
+                    paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
                 }
 
-                sql += " ORDER BY user_id LIMIT @offset, @pageSize";
-                paramList.Add(new MySqlParameter("@offset", (currentUserPage - 1) * PageSize));
-                paramList.Add(new MySqlParameter("@pageSize", PageSize));
+                sql += " ORDER BY user_id";
+
+                // 如果應用分頁，則加入 LIMIT 條件
+                if (applyPagination)
+                {
+                    sql += " LIMIT @offset, @pageSize";
+                    paramList.Add(new MySqlParameter("@offset", (page - 1) * PageSize));
+                    paramList.Add(new MySqlParameter("@pageSize", PageSize));
+                }
 
                 var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                dgvUser.DataSource = dt;
-                EnsureUserActionButtons();
-                SetUserGridColumnWidths();
+                
+                // 在 UI 線程上更新 DataGridView
+                this.Invoke((MethodInvoker)delegate {
+                     dgvUser.DataSource = null; // 保留此行
+                     dgvUser.DataSource = dt;   // 保留此行
+                     // 將 SetUserGridColumnWidths 的呼叫移到這裡，確保在所有列存在後再設定 DisplayIndex
+                     SetUserGridColumnWidths(); // 將呼叫移到 Refresh() 之前
+                     dgvUser.Refresh();         // 將呼叫移到 SetUserGridColumnWidths() 之後
+                });
             }
             catch (Exception ex)
             {
@@ -707,21 +730,26 @@ namespace WinFormsApp1
             if (dgvUser.Columns.Contains("用戶ID")) {
                 dgvUser.Columns["用戶ID"].Width = 60;
                 dgvUser.Columns["用戶ID"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                dgvUser.Columns["用戶ID"].DisplayIndex = 0;
             }
             if (dgvUser.Columns.Contains("帳號")) {
                 dgvUser.Columns["帳號"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                dgvUser.Columns["帳號"].DisplayIndex = 1;
             }
             if (dgvUser.Columns.Contains("角色")) {
                 dgvUser.Columns["角色"].Width = 80;
                 dgvUser.Columns["角色"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                dgvUser.Columns["角色"].DisplayIndex = 2;
             }
             if (dgvUser.Columns.Contains("查看借閱紀錄")) {
                 dgvUser.Columns["查看借閱紀錄"].Width = 110;
                 dgvUser.Columns["查看借閱紀錄"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                dgvUser.Columns["查看借閱紀錄"].DisplayIndex = 3;
             }
             if (dgvUser.Columns.Contains("查看預約紀錄")) {
                 dgvUser.Columns["查看預約紀錄"].Width = 110;
                 dgvUser.Columns["查看預約紀錄"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                dgvUser.Columns["查看預約紀錄"].DisplayIndex = 4;
             }
         }
         private void SetBorrowGridColumnWidths()
