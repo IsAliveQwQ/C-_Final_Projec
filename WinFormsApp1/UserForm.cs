@@ -915,12 +915,12 @@ namespace WinFormsApp1
             }
         }
 
-        // 修改 DgvBorrowRecord_DataBindingComplete 方法，只處理必要的更新
+        // 修改 DgvBorrowRecord_DataBindingComplete 方法
         private void DgvBorrowRecord_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
         {
             if (dgvBorrowRecord.Columns.Count == 0) return;
 
-            // 只設置列寬和標題，其他樣式已在初始化時設置
+            // 設定列寬和標題
             var columnSettings = new Dictionary<string, (string Header, int Width)>
             {
                 { "borrow_id", ("編號", 60) },
@@ -949,10 +949,14 @@ namespace WinFormsApp1
                 {
                     Name = "操作",
                     HeaderText = "操作",
-                    UseColumnTextForButtonValue = true,
+                    UseColumnTextForButtonValue = true, // 修改為 true
                     Width = 80
                 };
                 dgvBorrowRecord.Columns.Add(operationCol);
+            }
+            else
+            {
+                operationCol.UseColumnTextForButtonValue = true; // 確保屬性正確設定
             }
 
             // 更新按鈕狀態
@@ -965,8 +969,9 @@ namespace WinFormsApp1
                 if (statusCell != null && operationCell != null)
                 {
                     string status = statusCell.Value?.ToString() ?? "";
-                    operationCell.Value = status == "未還" ? "還書" : status;
+                    operationCell.Value = status == "未還" ? "還書" : "已還";
                     operationCell.Style.ForeColor = status == "未還" ? System.Drawing.Color.DarkBlue : System.Drawing.Color.Gray;
+                    operationCell.ReadOnly = status != "未還";
                 }
             }
         }
@@ -1064,8 +1069,6 @@ namespace WinFormsApp1
             if (dgvBorrowRecord == null || dgvBorrowRecord.Columns.Count == 0) return; // 檢查 dgvBorrowRecord 和 Columns 是否存在
 
             // 設定 DataGridView 屬性 (只設定一次，而不是每次數據綁定都設定)
-            // 這些基本屬性理論上可以在 InitializeComponent 或 InitializeUserTabs 中設定
-            // 但為了安全起見，我們在這裡再次確認或設定
             dgvBorrowRecord.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
             dgvBorrowRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
             dgvBorrowRecord.RowTemplate.Height = 36;
@@ -1076,27 +1079,28 @@ namespace WinFormsApp1
             dgvBorrowRecord.EnableHeadersVisualStyles = false;
             dgvBorrowRecord.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
 
-            // 重新添加欄位標題和寬度設定，但保留 Paint 事件的延遲設定邏輯
-            // 這裡只確保 HeaderText 和 Width 在 DataBindingComplete 時被設定一次基本值，Paint 事件會覆蓋
-            var borrowIdCol = dgvBorrowRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == "borrow_id");
-            if (borrowIdCol != null) { borrowIdCol.HeaderText = "編號"; borrowIdCol.Width = 60; }
+            // 重新添加欄位標題和寬度設定
+            var columnSettings = new Dictionary<string, (string Header, int Width)>
+            {
+                { "borrow_id", ("編號", 60) },
+                { "title", ("書名", 260) },
+                { "isbn", ("ISBN", 120) },
+                { "borrow_date", ("借閱日期", 180) },
+                { "return_date", ("歸還日期", 180) },
+                { "status", ("狀態", 80) }
+            };
 
-            var titleCol = dgvBorrowRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == "title");
-            if (titleCol != null) { titleCol.HeaderText = "書名"; titleCol.Width = 250; }
+            foreach (var setting in columnSettings)
+            {
+                if (dgvBorrowRecord.Columns.Contains(setting.Key))
+                {
+                    var col = dgvBorrowRecord.Columns[setting.Key];
+                    col.HeaderText = setting.Value.Header;
+                    col.Width = setting.Value.Width;
+                }
+            }
 
-            var isbnCol = dgvBorrowRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == "isbn");
-            if (isbnCol != null) { isbnCol.HeaderText = "ISBN"; isbnCol.Width = 120; }
-
-            var borrowDateCol = dgvBorrowRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == "borrow_date");
-            if (borrowDateCol != null) { borrowDateCol.HeaderText = "借閱日期"; borrowDateCol.Width = 150; }
-
-            var returnDateCol = dgvBorrowRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == "return_date");
-            if (returnDateCol != null) { returnDateCol.HeaderText = "歸還日期"; returnDateCol.Width = 150; }
-
-            var statusCol = dgvBorrowRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == "status");
-            if (statusCol != null) { statusCol.HeaderText = "狀態"; statusCol.Width = 80; }
-
-            // 添加或獲取 "操作" 按鈕列 的程式碼塊
+            // 添加或獲取 "操作" 按鈕列
             var operationCol = dgvBorrowRecord.Columns.OfType<DataGridViewButtonColumn>().FirstOrDefault(c => c.Name == "操作");
             if (operationCol == null)
             {
@@ -1104,44 +1108,43 @@ namespace WinFormsApp1
                 {
                     Name = "操作",
                     HeaderText = "操作",
-                    UseColumnTextForButtonValue = false, // Use Value property for button text
+                    UseColumnTextForButtonValue = true, // 修改為 true，使用 Value 作為按鈕文字
                     Width = 80
                 };
                 dgvBorrowRecord.Columns.Add(operationCol);
-            } else
+            }
+            else
             {
-                operationCol.UseColumnTextForButtonValue = false; // Ensure the property is set correctly
+                operationCol.UseColumnTextForButtonValue = true; // 確保屬性正確設定
             }
 
             // 根據狀態設定按鈕文字和啟用狀態
             foreach (DataGridViewRow row in dgvBorrowRecord.Rows)
             {
                 if (row.IsNewRow) continue;
-                 // 檢查是否存在狀態和操作欄位，並獲取單元格
-                 var statusCell = (dgvBorrowRecord.Columns.Contains("status") && row.Cells["status"] != null) ? row.Cells["status"] : null;
-                   var operationCell = (dgvBorrowRecord.Columns.Contains("操作") && row.Cells["操作"] != null) ? row.Cells["操作"] as DataGridViewButtonCell : null;
-
-                   if (statusCell != null && operationCell != null)
-                   {
-                       string status = statusCell.Value?.ToString() ?? "";
-
-                       if (status == "未還")
-                       {
-                           operationCell.Value = "還書"; // 設定按鈕文字
-                           if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.DarkBlue;
-                           operationCell.ReadOnly = false;
-                       }
-                       else
-                       {
-                           operationCell.Value = "已還"; // 明確顯示已還
-                           operationCell.ReadOnly = true;
-                           if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.Gray;
-                       }
-                   }
+                
+                // 檢查是否存在狀態和操作欄位
+                var statusCell = row.Cells["status"];
+                var operationCell = row.Cells["操作"] as DataGridViewButtonCell;
+                
+                if (statusCell != null && operationCell != null)
+                {
+                    string status = statusCell.Value?.ToString() ?? "";
+                    
+                    if (status == "未還")
+                    {
+                        operationCell.Value = "還書";
+                        operationCell.Style.ForeColor = System.Drawing.Color.DarkBlue;
+                        operationCell.ReadOnly = false;
+                    }
+                    else
+                    {
+                        operationCell.Value = "已還";
+                        operationCell.Style.ForeColor = System.Drawing.Color.Gray;
+                        operationCell.ReadOnly = true;
+                    }
+                }
             }
-
-            // 設定旗標，表示基本設定已應用 (欄位標題和寬度由 Paint 事件設定)
-            borrowGridSettingsApplied = false; // 重置旗標，以便在 Paint 事件中重新應用欄位設定
         }
 
         // dgvBorrowRecord 的 Paint 事件處理程式
@@ -1562,10 +1565,10 @@ WHERE 1=1";
                 ("作者", "作者", 80),
                 ("出版社", "出版社", 100),
                 ("分類", "分類", 100),
-                ("借閱狀態", "借閱狀態", 120),
-                ("預約狀態", "預約狀態", 120),
-                ("借書", "借書", 60),
-                ("預約", "預約", 60)
+                ("借閱狀態", "借閱狀態", 90),  // 減少寬度從 120 到 90
+                ("預約狀態", "預約狀態", 90),  // 減少寬度從 120 到 90
+                ("借書", "借書", 80),         // 增加寬度從 60 到 80
+                ("預約", "預約", 80)          // 增加寬度從 60 到 80
             };
             // Add button columns if they don't exist yet
             if (dgvUserComics.Columns["借書"] == null)
@@ -1576,7 +1579,7 @@ WHERE 1=1";
                     HeaderText = "借書",
                     Text = "借書", // Fallback text
                     UseColumnTextForButtonValue = false, // Use Value property
-                    Width = 60
+                    Width = 80     // 增加寬度從 60 到 80
                 };
                 dgvUserComics.Columns.Add(btnRent);
             }
@@ -1588,7 +1591,7 @@ WHERE 1=1";
                     HeaderText = "預約",
                     Text = "預約", // Fallback text
                     UseColumnTextForButtonValue = false, // Use Value property
-                    Width = 60
+                    Width = 80     // 增加寬度從 60 到 80
                 };
                 dgvUserComics.Columns.Add(btnReserve);
             }
