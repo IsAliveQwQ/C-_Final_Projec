@@ -155,6 +155,15 @@ DEVELOPMENT_PLAN.md   # 開發計畫與進度
     - **解決方案：** 在 `dgvBorrowRecord_CellContentClick` (還書後) 和 `dgvReserveRecord_CellContentClick` (取消預約後) 方法中，除了刷新當前記錄列表，額外增加了對 `RefreshAllSectionsAsync()` 的異步調用。
     - **效益：：** 確保在記錄分頁執行操作後，所有相關聯的分頁（首頁、借閱紀錄、預約紀錄）都能同步更新到最新狀態，維持了跨分頁的資料一致性。
 
+- 2024/05/25:
+  - **使用者介面增強：**
+    - **借閱/預約按鈕冷卻期視覺提示：** 在使用者主頁漫畫列表中，當用戶處於借閱或預約冷卻期時，對應的「借書」或「預約」按鈕會顯示為灰色，文字變為「冷卻中」，以明確告知用戶當前狀態。
+    - **實現方式：** 修改 `UpdateComicsButtonColumnStates` 方法，在判斷借閱和預約狀態時，增加對 `IsUserInCoolingPeriod` 和 `IsUserInReservationCoolingPeriod` 方法的呼叫。如果用戶在冷卻期內，將按鈕的 `ReadOnly` 屬性設為 `true`，並將按鈕儲存格的 `ForeColor` 設為灰色，`Value` 設為「冷卻中」。
+    - **預約紀錄分頁取消預約功能：** 在預約紀錄分頁，點擊「操作」欄中狀態為「預約中」的按鈕時，可以成功觸發取消預約的邏輯。
+    - **實現方式：** 新增 `DgvReserveRecord_CellContentClick` 事件處理方法，綁定到 `dgvReserveRecord` 的 `CellContentClick` 事件。在此方法中，判斷點擊的是否為「操作」按鈕且文字為「取消預約」，若是，則獲取對應行的 `reservation_id`，繼而查詢 `comic_id`，並呼叫現有的 `HandleReserveAction(comicId)` 方法執行取消預約操作。操作完成後，刷新預約紀錄和首頁漫畫列表。
+    - **點擊禁用按鈕無效化：** 在使用者主頁漫畫列表中，確保當「借書」或「預約」按鈕顯示「冷卻中」並為灰色（即 `ReadOnly` 為 true）時，點擊這些按鈕不會觸發任何操作。
+    - **實現方式：** 在 `DgvUserComics_CellContentClick` 方法的開頭，新增判斷點擊的 `DataGridViewButtonCell` 是否為 `ReadOnly`，如果是則直接返回。
+
 ---
 
 如有任何問題，請聯絡專案負責人或於專案討論區提出。

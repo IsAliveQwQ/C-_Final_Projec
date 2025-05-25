@@ -237,9 +237,21 @@ namespace WinFormsApp1
             {
                 try
                 {
+                    // 先刪除該用戶在 borrow_record 表中的相關記錄
+                    string sqlDeleteBorrow = "DELETE FROM borrow_record WHERE user_id = @uid";
+                    MySqlParameter[] pBorrow = { new MySqlParameter("@uid", userId) };
+                    DBHelper.ExecuteNonQuery(sqlDeleteBorrow, pBorrow);
+
+                    // 再刪除該用戶在 reservation 表中的相關記錄 (如果存在)
+                    string sqlDeleteReserve = "DELETE FROM reservation WHERE user_id = @uid";
+                    MySqlParameter[] pReserve = { new MySqlParameter("@uid", userId) };
+                    DBHelper.ExecuteNonQuery(sqlDeleteReserve, pReserve);
+
+                    // 最後刪除用戶記錄
                     string sql = "DELETE FROM user WHERE user_id = @uid";
                     MySqlParameter[] p = { new MySqlParameter("@uid", userId) };
                     int rows = DBHelper.ExecuteNonQuery(sql, p);
+
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);

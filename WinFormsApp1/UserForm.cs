@@ -1128,22 +1128,22 @@ namespace WinFormsApp1
                 // 檢查是否存在狀態和操作欄位
                 var statusCell = row.Cells["status"];
                 var operationCell = row.Cells["操作"] as DataGridViewButtonCell;
-                
-                if (statusCell != null && operationCell != null)
-                {
-                    string status = statusCell.Value?.ToString() ?? "";
-                    
-                    if (status == "未還")
-                    {
+
+                   if (statusCell != null && operationCell != null)
+                   {
+                       string status = statusCell.Value?.ToString() ?? "";
+
+                       if (status == "未還")
+                       {
                         operationCell.Value = "還書";
-                        operationCell.ReadOnly = false;
-                    }
-                    else
-                    {
+                           operationCell.ReadOnly = false;
+                       }
+                       else
+                       {
                         operationCell.Value = "已還";
-                        operationCell.ReadOnly = true;
-                    }
-                }
+                           operationCell.ReadOnly = true;
+                       }
+                   }
             }
         }
 
@@ -1460,6 +1460,8 @@ LEFT JOIN (
             };
             dgvReserveRecord.EnableHeadersVisualStyles = false;
             dgvReserveRecord.DataBindingComplete += DgvReserveRecord_DataBindingComplete;
+            // 新增：綁定 CellContentClick 事件處理程式
+            dgvReserveRecord.CellContentClick += DgvReserveRecord_CellContentClick;
             tabPageReserve.Controls.Add(dgvReserveRecord);
             tabPageReserve.Controls.Add(panelPaging);
             tabPageReserve.Controls.Add(panelSearch);
@@ -1685,13 +1687,23 @@ WHERE 1=1";
                             cellRent.ReadOnly = true;
                         }
                     }
-                    else
+                    else // borrowStatus == "未被借"
                     {
-                        cellRent.Value = "借書"; // 設定按鈕文字
-                        if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Black;
-                        cellRent.ReadOnly = false;
+                        // 檢查是否在冷卻期 (同步呼叫，應影響較小)
+                        if (IsUserInCoolingPeriod(loggedInUserId, comicId))
+                        {
+                            cellRent.Value = "冷卻中"; // 設定按鈕文字
+                            cellRent.ReadOnly = true; // 設為只讀
+                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Gray; // 設定文字顏色為灰色
+                        }
+                        else
+                        {
+                            cellRent.Value = "借書"; // 設定按鈕文字
+                            cellRent.ReadOnly = false; // 設為可編輯
+                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Black; // 設定文字顏色為黑色或其他非灰色
+                        }
                     }
-                     // fallback 預設
+                     // fallback 預設 (保持不變)
                     if (cellRent.Value == null || string.IsNullOrWhiteSpace(cellRent.Value.ToString()))
                         cellRent.Value = "借書";
                 }
@@ -1734,17 +1746,17 @@ WHERE 1=1";
                         if (IsUserInReservationCoolingPeriod(loggedInUserId, comicId))
                         {
                             cellReserve.Value = "冷卻中"; // 設定按鈕文字
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
-                            cellReserve.ReadOnly = true;
+                            cellReserve.ReadOnly = true; // 設為只讀
+                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray; // 設定文字顏色為灰色
                         }
                         else
                         {
                             cellReserve.Value = "預約"; // 設定按鈕文字
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black;
-                            cellReserve.ReadOnly = false;
+                            cellReserve.ReadOnly = false; // 設為可編輯
+                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black; // 設定文字顏色為黑色或其他非灰色
                         }
                     }
-                     // fallback 預設
+                     // fallback 預設 (保持不變)
                     if (cellReserve.Value == null || string.IsNullOrWhiteSpace(cellReserve.Value.ToString()))
                         cellReserve.Value = "預約";
                 }
@@ -2263,6 +2275,58 @@ WHERE 1=1";
                     }
                 }
                 // 如果狀態不是「未還」，則按鈕是只讀的，不執行任何操作
+            }
+        }
+
+        // 新增預約紀錄 DataGridView 的 CellContentClick 事件處理程式
+        private async void DgvReserveRecord_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // 確保點擊的是「操作」欄位且不是新行
+            if (e.RowIndex < 0 || dgvReserveRecord.Columns.Count <= e.ColumnIndex || dgvReserveRecord.Columns[e.ColumnIndex].Name != "操作") return;
+
+            var row = dgvReserveRecord.Rows[e.RowIndex];
+            var clickedCell = row.Cells[e.ColumnIndex] as DataGridViewButtonCell;
+
+            // 確保是按鈕儲存格且按鈕文字是「取消預約」
+            if (clickedCell != null && clickedCell.Value?.ToString() == "取消預約")
+            {
+                // 獲取預約 ID
+                int reservationId = 0;
+                if (dgvReserveRecord.Columns.Contains("reservation_id") && row.Cells["reservation_id"] != null && row.Cells["reservation_id"].Value != null)
+                {
+                     int.TryParse(row.Cells["reservation_id"].Value.ToString(), out reservationId);
+                }
+
+                if (reservationId == 0) return; // 無效的預約 ID
+
+                try
+                {
+                    // 透過 reservation_id 查詢 comic_id
+                    string sqlComicId = "SELECT comic_id FROM reservation WHERE reservation_id = @rid";
+                    var dtComic = DBHelper.ExecuteQuery(sqlComicId, new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@rid", reservationId)
+                    });
+
+                    if (dtComic.Rows.Count > 0)
+                    {
+                        int comicId = Convert.ToInt32(dtComic.Rows[0]["comic_id"]);
+
+                        // 呼叫 HandleReserveAction 來執行取消預約邏輯
+                        await HandleReserveAction(comicId);
+
+                        // 刷新預約紀錄列表和首頁漫畫列表
+                        await RefreshReserveRecordsAsync();
+                        await RefreshUserComicsGrid("", "全部"); // 使用預設搜尋條件刷新首頁
+                    }
+                    else
+                    {
+                        MessageBox.Show("找不到對應的漫畫資料。", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("取消預約操作發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
     }
