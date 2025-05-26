@@ -1514,20 +1514,32 @@ LEFT JOIN (
         {
             try
             {
-                string sql = @"SELECT c.comic_id AS 書號, c.isbn AS ISBN, c.title AS 書名, c.author AS 作者, c.publisher AS 出版社, c.category AS 分類,
-       CASE WHEN br.comic_id IS NOT NULL THEN '已被借' ELSE '未被借' END AS 借閱狀態,
-       CASE
-         WHEN br.comic_id IS NOT NULL THEN '不可預約'
-         WHEN r.comic_id IS NOT NULL THEN '已被預約'
-         ELSE '可預約'
-       END AS 預約狀態
-FROM comic c
-LEFT JOIN borrow_record br ON c.comic_id = br.comic_id AND br.return_date IS NULL
-LEFT JOIN (
-    SELECT comic_id FROM reservation
-    WHERE status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)
-) r ON c.comic_id = r.comic_id
-WHERE 1=1";
+                // 優化 SQL 查詢，一次性獲取所有需要的數據
+                string sql = @"SELECT 
+                    c.comic_id AS 書號, 
+                    c.isbn AS ISBN, 
+                    c.title AS 書名, 
+                    c.author AS 作者, 
+                    c.publisher AS 出版社, 
+                    c.category AS 分類,
+                    CASE WHEN br.comic_id IS NOT NULL THEN '已被借' ELSE '未被借' END AS 借閱狀態,
+                    CASE
+                        WHEN br.comic_id IS NOT NULL THEN '不可預約'
+                        WHEN r.comic_id IS NOT NULL THEN '已被預約'
+                        ELSE '可預約'
+                    END AS 預約狀態,
+                    br.user_id AS borrowed_by,
+                    r.user_id AS reserved_by
+                FROM comic c
+                LEFT JOIN borrow_record br ON c.comic_id = br.comic_id AND br.return_date IS NULL
+                LEFT JOIN (
+                    SELECT comic_id, user_id 
+                    FROM reservation 
+                    WHERE status = 'active' 
+                    AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                ) r ON c.comic_id = r.comic_id
+                WHERE 1=1";
+
                 var paramList = new List<MySqlParameter>();
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
@@ -1567,12 +1579,10 @@ WHERE 1=1";
                 DataTable dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
 
                 // 在 UI 線程上更新 DataGridView
-                this.Invoke((MethodInvoker)delegate {
+                await this.InvokeAsync(() => {
                     dgvUserComics.DataSource = dt;
-                     // Removed this line: dgvUserComics.Refresh();
-                    // 新增按鈕欄位（若尚未存在）和設定欄位屬性
-                    SetUserComicsGridColumnSettings(); // 直接在此呼叫設定方法
-                    UpdateComicsButtonColumnStates(); // 回滾：呼叫 UpdateComicsButtonColumnStates 在這裡
+                    SetUserComicsGridColumnSettings();
+                    UpdateComicsButtonColumnStates();
                 });
             }
             catch (Exception ex)
@@ -1672,110 +1682,78 @@ WHERE 1=1";
 
             if (!dgvUserComics.Columns.Contains("借書") || !dgvUserComics.Columns.Contains("預約")) return;
 
+            // 一次性獲取所有冷卻期和狀態數據
             var borrowCoolingSet = GetUserBorrowCoolingComicIds();
             var reserveCoolingSet = GetUserReserveCoolingComicIds();
-            var borrowUserDict = GetCurrentBorrowedComicUserDict();
-            var reserveUserDict = GetCurrentReservedComicUserDict();
 
             foreach (DataGridViewRow row in dgvUserComics.Rows)
             {
                 if (row.IsNewRow) continue;
+                
                 int comicId = 0;
                 if (dgvUserComics.Columns.Contains("書號") && row.Cells["書號"] != null && row.Cells["書號"].Value != null)
                     int.TryParse(row.Cells["書號"].Value.ToString(), out comicId);
 
-                string borrowStatus = (dgvUserComics.Columns.Contains("借閱狀態") && row.Cells["借閱狀態"] != null) ? (row.Cells["借閱狀態"].Value?.ToString() ?? "") : "";
-                string reserveStatus = (dgvUserComics.Columns.Contains("預約狀態") && row.Cells["預約狀態"] != null) ? (row.Cells["預約狀態"].Value?.ToString() ?? "") : "";
+                string borrowStatus = row.Cells["借閱狀態"]?.Value?.ToString() ?? "";
+                string reserveStatus = row.Cells["預約狀態"]?.Value?.ToString() ?? "";
+                int? borrowedBy = row.Cells["borrowed_by"]?.Value as int?;
+                int? reservedBy = row.Cells["reserved_by"]?.Value as int?;
 
-                var cellRent = (dgvUserComics.Columns.Contains("借書") && row.Cells["借書"] != null) ? row.Cells["借書"] as DataGridViewButtonCell : null;
+                // 更新借書按鈕
+                var cellRent = row.Cells["借書"] as DataGridViewButtonCell;
                 if (cellRent != null)
                 {
                     if (borrowStatus == "已被借")
                     {
-                        int borrowedUserId = borrowUserDict.ContainsKey(comicId) ? borrowUserDict[comicId] : -1;
-                        if (borrowedUserId == loggedInUserId)
+                        if (borrowedBy == loggedInUserId)
                         {
                             cellRent.Value = "還書";
-                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.DarkBlue;
                             cellRent.ReadOnly = false;
                         }
                         else
                         {
                             cellRent.Value = "借書";
-                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Gray;
                             cellRent.ReadOnly = true;
                         }
                     }
-                    else // borrowStatus == "未被借"
+                    else
                     {
-                        if (borrowCoolingSet.Contains(comicId))
-                        {
-                            cellRent.Value = "冷卻中";
-                            cellRent.ReadOnly = true;
-                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Gray;
-                        }
-                        else
-                        {
-                            cellRent.Value = "借書";
-                            cellRent.ReadOnly = false;
-                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Black;
-                        }
+                        cellRent.Value = borrowCoolingSet.Contains(comicId) ? "冷卻中" : "借書";
+                        cellRent.ReadOnly = borrowCoolingSet.Contains(comicId);
                     }
-                    if (cellRent.Value == null || string.IsNullOrWhiteSpace(cellRent.Value.ToString()))
-                        cellRent.Value = "借書";
                 }
 
-                var cellReserve = (dgvUserComics.Columns.Contains("預約") && row.Cells["預約"] != null) ? row.Cells["預約"] as DataGridViewButtonCell : null;
+                // 更新預約按鈕
+                var cellReserve = row.Cells["預約"] as DataGridViewButtonCell;
                 if (cellReserve != null)
                 {
-                    if (borrowCoolingSet.Contains(comicId))
+                    if (borrowStatus == "已被借")
                     {
                         cellReserve.Value = "不可預約";
-                        if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
                         cellReserve.ReadOnly = true;
                     }
                     else if (reserveStatus == "已被預約")
                     {
-                        int reservedUserId = reserveUserDict.ContainsKey(comicId) ? reserveUserDict[comicId] : -1;
-                        if (reservedUserId == loggedInUserId)
+                        if (reservedBy == loggedInUserId)
                         {
                             cellReserve.Value = "取消預約";
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.DarkBlue;
                             cellReserve.ReadOnly = false;
                         }
                         else
                         {
                             cellReserve.Value = "已被預約";
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
                             cellReserve.ReadOnly = true;
                         }
                     }
-                    else if (reserveStatus == "不可預約")
+                    else
                     {
-                        cellReserve.Value = "不可預約";
-                        if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
-                        cellReserve.ReadOnly = true;
+                        cellReserve.Value = reserveCoolingSet.Contains(comicId) ? "冷卻中" : "預約";
+                        cellReserve.ReadOnly = reserveCoolingSet.Contains(comicId);
                     }
-                    else // reserveStatus == "可預約"
-                    {
-                        if (reserveCoolingSet.Contains(comicId))
-                        {
-                            cellReserve.Value = "冷卻中";
-                            cellReserve.ReadOnly = true;
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
-                        }
-                        else
-                        {
-                            cellReserve.Value = "預約";
-                            cellReserve.ReadOnly = false;
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black;
-                        }
-                    }
-                    if (cellReserve.Value == null || string.IsNullOrWhiteSpace(cellReserve.Value.ToString()))
-                        cellReserve.Value = "預約";
                 }
             }
 
+            // 如果有上次操作的漫畫，自動選中
             if (lastActionComicId > 0)
             {
                 foreach (DataGridViewRow row in dgvUserComics.Rows)
