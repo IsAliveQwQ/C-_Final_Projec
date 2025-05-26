@@ -125,16 +125,41 @@ namespace WinFormsApp1
         // UserForm Load 事件處理方法
         private async void UserForm_Load(object sender, EventArgs e)
         {
+            // 1. 先初始化 UI，不等待數據
             SetupHomePageLayout();
             SetupBorrowPageLayout();
             SetupReservePageLayout();
             SetupProfilePageLayout();
-            await InitializeAllUserDataAsync();
+
+            // 2. 設置基本 UI 屬性
             dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
             dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
             dgvComics.RowTemplate.Height = 48;
             dgvComics.RowHeadersWidth = 60;
             SetComicsGridColumnSettings();
+
+            // 3. 立即顯示表單，不等待數據
+            this.Show();
+
+            // 4. 在背景載入數據
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // 4.1 載入首頁漫畫列表
+                    await this.InvokeAsync(() => RefreshUserComicsGrid("", "全部"));
+
+                    // 4.2 並行載入其他分頁數據
+                    var borrowTask = RefreshBorrowRecordsAsync();
+                    var reserveTask = RefreshReserveRecordsAsync();
+                    await Task.WhenAll(borrowTask, reserveTask);
+                }
+                catch (Exception ex)
+                {
+                    await this.InvokeAsync(() => 
+                        MessageBox.Show("載入數據時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error));
+                }
+            });
         }
 
         // 1. 新增 InitializeAllUserDataAsync 方法
@@ -1645,88 +1670,73 @@ WHERE 1=1";
         {
             if (dgvUserComics == null || dgvUserComics.Rows.Count == 0) return;
 
-            // Ensure columns exist before attempting to access cells
             if (!dgvUserComics.Columns.Contains("借書") || !dgvUserComics.Columns.Contains("預約")) return;
+
+            var borrowCoolingSet = GetUserBorrowCoolingComicIds();
+            var reserveCoolingSet = GetUserReserveCoolingComicIds();
+            var borrowUserDict = GetCurrentBorrowedComicUserDict();
+            var reserveUserDict = GetCurrentReservedComicUserDict();
 
             foreach (DataGridViewRow row in dgvUserComics.Rows)
             {
                 if (row.IsNewRow) continue;
                 int comicId = 0;
-                // Ensure "書號" cell exists and is not null before accessing its value
                 if (dgvUserComics.Columns.Contains("書號") && row.Cells["書號"] != null && row.Cells["書號"].Value != null)
                     int.TryParse(row.Cells["書號"].Value.ToString(), out comicId);
 
-                // Ensure status cells exist before accessing them
                 string borrowStatus = (dgvUserComics.Columns.Contains("借閱狀態") && row.Cells["借閱狀態"] != null) ? (row.Cells["借閱狀態"].Value?.ToString() ?? "") : "";
                 string reserveStatus = (dgvUserComics.Columns.Contains("預約狀態") && row.Cells["預約狀態"] != null) ? (row.Cells["預約狀態"].Value?.ToString() ?? "") : "";
 
-                // 處理借書按鈕邏輯保持不變
                 var cellRent = (dgvUserComics.Columns.Contains("借書") && row.Cells["借書"] != null) ? row.Cells["借書"] as DataGridViewButtonCell : null;
                 if (cellRent != null)
                 {
                     if (borrowStatus == "已被借")
                     {
-                         // 查詢借閱者是否為自己 (同步呼叫，但查詢量小，應影響較小)
-                         string sql = "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL";
-                         var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
-                             new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                         });
-                         int borrowedUserId = dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["user_id"]) : -1;
-
+                        int borrowedUserId = borrowUserDict.ContainsKey(comicId) ? borrowUserDict[comicId] : -1;
                         if (borrowedUserId == loggedInUserId)
                         {
-                            cellRent.Value = "還書"; // 設定按鈕文字
+                            cellRent.Value = "還書";
                             if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.DarkBlue;
                             cellRent.ReadOnly = false;
                         }
                         else
                         {
-                            cellRent.Value = "借書"; // 設定按鈕文字
+                            cellRent.Value = "借書";
                             if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Gray;
                             cellRent.ReadOnly = true;
                         }
                     }
                     else // borrowStatus == "未被借"
                     {
-                        // 檢查是否在冷卻期 (同步呼叫，應影響較小)
-                        if (IsUserInCoolingPeriod(loggedInUserId, comicId))
+                        if (borrowCoolingSet.Contains(comicId))
                         {
-                            cellRent.Value = "冷卻中"; // 設定按鈕文字
-                            cellRent.ReadOnly = true; // 設為只讀
-                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Gray; // 設定文字顏色為灰色
+                            cellRent.Value = "冷卻中";
+                            cellRent.ReadOnly = true;
+                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Gray;
                         }
                         else
                         {
-                            cellRent.Value = "借書"; // 設定按鈕文字
-                            cellRent.ReadOnly = false; // 設為可編輯
-                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Black; // 設定文字顏色為黑色或其他非灰色
+                            cellRent.Value = "借書";
+                            cellRent.ReadOnly = false;
+                            if (cellRent.Style != null) cellRent.Style.ForeColor = System.Drawing.Color.Black;
                         }
                     }
-                     // fallback 預設 (保持不變)
                     if (cellRent.Value == null || string.IsNullOrWhiteSpace(cellRent.Value.ToString()))
                         cellRent.Value = "借書";
                 }
 
-                // 優化預約按鈕邏輯
                 var cellReserve = (dgvUserComics.Columns.Contains("預約") && row.Cells["預約"] != null) ? row.Cells["預約"] as DataGridViewButtonCell : null;
                 if (cellReserve != null)
                 {
-                    // Add check for borrow cooling period impacting reservation
-                    if (IsUserInCoolingPeriod(loggedInUserId, comicId))
+                    if (borrowCoolingSet.Contains(comicId))
                     {
-                        cellReserve.Value = "不可預約"; // 設定按鈕文字
-                        if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray; // 設定文字顏色為灰色
-                        cellReserve.ReadOnly = true; // 設為只讀
+                        cellReserve.Value = "不可預約";
+                        if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
+                        cellReserve.ReadOnly = true;
                     }
                     else if (reserveStatus == "已被預約")
                     {
-                        // 查詢預約者是否為自己
-                        string sql = "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-                        var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
-                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                        });
-                        int reservedUserId = dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["user_id"]) : -1;
-
+                        int reservedUserId = reserveUserDict.ContainsKey(comicId) ? reserveUserDict[comicId] : -1;
                         if (reservedUserId == loggedInUserId)
                         {
                             cellReserve.Value = "取消預約";
@@ -1748,35 +1758,11 @@ WHERE 1=1";
                     }
                     else // reserveStatus == "可預約"
                     {
-                        // 檢查是否在預約冷卻期 (只在可預約時檢查預約冷卻期)
-                        string sqlCooling = @"SELECT reservation_date 
-                                            FROM reservation 
-                                            WHERE user_id = @uid 
-                                            AND comic_id = @cid 
-                                            AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR) 
-                                            ORDER BY reservation_date DESC 
-                                            LIMIT 1";
-                        var dtCooling = DBHelper.ExecuteQuery(sqlCooling, new MySql.Data.MySqlClient.MySqlParameter[] {
-                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
-                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                        });
-
-                        if (dtCooling.Rows.Count > 0)
+                        if (reserveCoolingSet.Contains(comicId))
                         {
-                            DateTime lastReserveTime = Convert.ToDateTime(dtCooling.Rows[0]["reservation_date"]);
-                            double remainingHours = 24 - (DateTime.Now - lastReserveTime).TotalHours;
-                            if (remainingHours > 0)
-                            {
-                                cellReserve.Value = "冷卻中";
-                                cellReserve.ReadOnly = true;
-                                if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
-                            }
-                            else
-                            {
-                                cellReserve.Value = "預約";
-                                cellReserve.ReadOnly = false;
-                                if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black;
-                            }
+                            cellReserve.Value = "冷卻中";
+                            cellReserve.ReadOnly = true;
+                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
                         }
                         else
                         {
@@ -1785,13 +1771,11 @@ WHERE 1=1";
                             if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black;
                         }
                     }
-                     // fallback 預設 (保持不變)
                     if (cellReserve.Value == null || string.IsNullOrWhiteSpace(cellReserve.Value.ToString()))
                         cellReserve.Value = "預約";
                 }
             }
 
-            // 自動選中上次操作的 comicId
             if (lastActionComicId > 0)
             {
                 foreach (DataGridViewRow row in dgvUserComics.Rows)
@@ -2404,6 +2388,67 @@ WHERE 1=1";
                     MessageBox.Show("取消預約操作發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        // 一次查出目前用戶所有借閱冷卻期漫畫ID
+        private HashSet<int> GetUserBorrowCoolingComicIds()
+        {
+            var result = new HashSet<int>();
+            string sql = @"SELECT comic_id FROM borrow_record 
+                           WHERE user_id = @uid 
+                           AND return_date IS NOT NULL 
+                           AND return_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+            var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+            });
+            foreach (DataRow row in dt.Rows)
+            {
+                result.Add(Convert.ToInt32(row["comic_id"]));
+            }
+            return result;
+        }
+
+        // 一次查出目前用戶所有預約冷卻期漫畫ID
+        private HashSet<int> GetUserReserveCoolingComicIds()
+        {
+            var result = new HashSet<int>();
+            string sql = @"SELECT comic_id FROM reservation 
+                           WHERE user_id = @uid 
+                           AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+            var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+            });
+            foreach (DataRow row in dt.Rows)
+            {
+                result.Add(Convert.ToInt32(row["comic_id"]));
+            }
+            return result;
+        }
+
+        // 一次查出所有目前被誰借走的漫畫ID與userId
+        private Dictionary<int, int> GetCurrentBorrowedComicUserDict()
+        {
+            var dict = new Dictionary<int, int>();
+            string sql = "SELECT comic_id, user_id FROM borrow_record WHERE return_date IS NULL";
+            var dt = DBHelper.ExecuteQuery(sql);
+            foreach (DataRow row in dt.Rows)
+            {
+                dict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
+            }
+            return dict;
+        }
+
+        // 一次查出所有目前被誰預約的漫畫ID與userId
+        private Dictionary<int, int> GetCurrentReservedComicUserDict()
+        {
+            var dict = new Dictionary<int, int>();
+            string sql = "SELECT comic_id, user_id FROM reservation WHERE status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+            var dt = DBHelper.ExecuteQuery(sql);
+            foreach (DataRow row in dt.Rows)
+            {
+                dict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
+            }
+            return dict;
         }
     }
 } // UserForm 結尾與 namespace 結尾
