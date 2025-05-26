@@ -2172,12 +2172,45 @@ WHERE 1=1";
         // 根據目前的狀態執行預約或取消預約操作
         private async Task HandleReserveAction(int comicId)
         {
-             // 在這裡實現預約或取消預約的資料庫操作和邏輯判斷
-             // 這些邏輯已經在 btnBigReserve_Click 中實現，可以直接拷貝過來或調用相應方法。
-             // 為了避免重複程式碼，建議將 btnBigReserve_Click 中的核心邏輯提取到這裡。
-
             try
             {
+                // 查詢預約狀態 (同步呼叫，因為需要即時判斷是新增還是取消預約)
+                var activeReservation = await Task.Run(() => {
+                    string sqlReserve = "SELECT user_id, reservation_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+                    var dtReserve = DBHelper.ExecuteQuery(sqlReserve, new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    });
+                    return dtReserve.Rows.Count > 0 ? new { UserId = Convert.ToInt32(dtReserve.Rows[0]["user_id"]), ReservationId = Convert.ToInt32(dtReserve.Rows[0]["reservation_id"]) } : null;
+                });
+
+                // 檢查是否是當前用戶自己的活躍預約 (表示嘗試取消預約)
+                if (activeReservation != null && activeReservation.UserId == loggedInUserId)
+                {
+                    // 執行取消預約邏輯（不檢查冷卻期）
+                    string sqlCancel = "UPDATE reservation SET status = 'canceled' WHERE reservation_id = @rid AND user_id = @uid AND status = 'active'";
+                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(sqlCancel, new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@rid", activeReservation.ReservationId),
+                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+                    }));
+
+                    if (rowsAffected > 0)
+                    {
+                        MessageBox.Show("取消預約成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("取消預約失敗。", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    return; // 取消預約後終止操作
+                }
+                // 檢查是否有其他用戶的活躍預約
+                else if (activeReservation != null)
+                {
+                    MessageBox.Show("此書已被預約，無法再次預約。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return; // 終止操作
+                }
+
+                // === 只有在新增預約時才檢查冷卻期 ===
                 // 首先檢查借書冷卻期，避免預約連續霸佔
                 if (IsUserInCoolingPeriod(loggedInUserId, comicId))
                 {
@@ -2246,43 +2279,6 @@ WHERE 1=1";
                     }
                 }
 
-                // 查詢預約狀態 (同步呼叫，因為需要即時判斷是新增還是取消預約)
-                var activeReservation = await Task.Run(() => { // 包裹在 Task.Run 中以避免阻塞 UI
-                    string sqlReserve = "SELECT user_id, reservation_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-                    var dtReserve = DBHelper.ExecuteQuery(sqlReserve, new MySql.Data.MySqlClient.MySqlParameter[] {
-                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                    });
-                    return dtReserve.Rows.Count > 0 ? new { UserId = Convert.ToInt32(dtReserve.Rows[0]["user_id"]), ReservationId = Convert.ToInt32(dtReserve.Rows[0]["reservation_id"]) } : null;
-                });
-
-                // 檢查是否是當前用戶自己的活躍預約 (表示嘗試取消預約)
-                if (activeReservation != null && activeReservation.UserId == loggedInUserId)
-                {
-                    // 執行取消預約邏輯
-                    string sqlCancel = "UPDATE reservation SET status = 'canceled' WHERE reservation_id = @rid AND user_id = @uid AND status = 'active'";
-                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(sqlCancel, new MySql.Data.MySqlClient.MySqlParameter[] {
-                        new MySql.Data.MySqlClient.MySqlParameter("@rid", activeReservation.ReservationId),
-                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
-                    }));
-
-                    if (rowsAffected > 0)
-                    {
-                        MessageBox.Show("取消預約成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                         // 刷新相關列表已在 DgvUserComics_CellContentClick 或調用處處理
-                    }
-                    else
-                    {
-                        MessageBox.Show("取消預約失敗。", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    return; // 取消預約後終止操作
-                }
-                // 檢查是否有其他用戶的活躍預約
-                else if (activeReservation != null)
-                {
-                    MessageBox.Show("此書已被預約，無法再次預約。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return; // 終止操作
-                }
-
                 // 新增預約 (只有在沒有被借出、沒有其他用戶活躍預約、且不在冷卻期時執行)
                 string sqlInsert = "INSERT INTO reservation (user_id, comic_id, reservation_date, status) VALUES (@uid, @cid, NOW(), 'active')";
                 int insertRowsAffected = await Task.Run(() => {
@@ -2294,7 +2290,6 @@ WHERE 1=1";
                 if (insertRowsAffected > 0)
                 {
                     MessageBox.Show("預約成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                     // 刷新相關列表已在 DgvUserComics_CellContentClick 或調用處處理
                 }
             }
             catch (Exception ex)
