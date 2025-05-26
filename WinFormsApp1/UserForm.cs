@@ -45,7 +45,8 @@ namespace WinFormsApp1
                 new object[] { true });
 
             // 設定表單標題
-            this.Text = "漫畫租書系統 - 使用者介面";
+            string username = GetUsernameById(userId);
+            this.Text = $"漫畫租書及預約系統 - 使用者介面（ID:{userId} 用戶名:{username}）";
 
             this.loggedInUserId = userId;
             this.loggedInUserRole = userRole; // 保存用戶角色
@@ -726,8 +727,8 @@ namespace WinFormsApp1
                         int userId = loginForm.LoggedInUserId; // 從登入表單獲取用戶 ID
                         string userRole = loginForm.LoggedInUserRole; // 從登入表單獲取用戶角色
 
-                        // TODO: 根據 userId 查詢用戶名 (如果需要顯示具體用戶名而不是 ID)
-                        string username = "用戶 " + userId; // 暫時使用用戶 ID 作為用戶名顯示
+                        // 使用 GetUsernameById 獲取用戶名
+                        string username = GetUsernameById(userId);
 
                         UpdateLoginStatus(true, userId, username, userRole);
                         MessageBox.Show($"登入成功！歡迎，{username}", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -2427,6 +2428,22 @@ LEFT JOIN (
                 dict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
             }
             return dict;
+        }
+
+        // 新增方法：根據用戶ID獲取用戶名
+        private string GetUsernameById(int userId)
+        {
+            try
+            {
+                string sql = "SELECT username FROM user WHERE user_id = @userId";
+                var param = new MySqlParameter("@userId", userId);
+                object result = DBHelper.ExecuteScalar(sql, new[] { param });
+                return result?.ToString() ?? "未知用戶";
+            }
+            catch
+            {
+                return "未知用戶";
+            }
         }
     }
 } // UserForm 結尾與 namespace 結尾

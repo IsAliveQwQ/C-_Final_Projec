@@ -40,7 +40,18 @@ namespace WinFormsApp1
             
             // 獲取當前登入用戶的用戶名
             string username = GetUsernameById(userId);
-            this.Text = $"管理員表單（ID:{userId} 用戶名:{username}）";
+            this.Text = $"漫畫租書及預約系統 - 管理員介面（ID:{userId} 用戶名:{username}）";
+            
+            // 設定字體大小
+            this.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
+            dgvUser.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
+            dgvUser.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
+            dgvComic.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
+            dgvComic.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
+            dgvBorrow.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
+            dgvBorrow.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
+            dgvReserve.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
+            dgvReserve.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
             
             EnsureUserActionButtons();
             InitializeEventHandlers();
