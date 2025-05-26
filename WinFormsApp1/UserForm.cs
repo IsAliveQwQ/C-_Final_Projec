@@ -1643,7 +1643,7 @@ WHERE 1=1";
         // 動態設置主頁漫畫列表按鈕文字和狀態的方法
         private void UpdateComicsButtonColumnStates()
         {
-             if (dgvUserComics == null || dgvUserComics.Rows.Count == 0) return; // 檢查 DataGridView 和 Rows 是否存在
+            if (dgvUserComics == null || dgvUserComics.Rows.Count == 0) return;
 
             // Ensure columns exist before attempting to access cells
             if (!dgvUserComics.Columns.Contains("借書") || !dgvUserComics.Columns.Contains("預約")) return;
@@ -1660,7 +1660,7 @@ WHERE 1=1";
                 string borrowStatus = (dgvUserComics.Columns.Contains("借閱狀態") && row.Cells["借閱狀態"] != null) ? (row.Cells["借閱狀態"].Value?.ToString() ?? "") : "";
                 string reserveStatus = (dgvUserComics.Columns.Contains("預約狀態") && row.Cells["預約狀態"] != null) ? (row.Cells["預約狀態"].Value?.ToString() ?? "") : "";
 
-                // 安全地獲取借書按鈕儲存格並設置其值和狀態
+                // 處理借書按鈕邏輯保持不變
                 var cellRent = (dgvUserComics.Columns.Contains("借書") && row.Cells["借書"] != null) ? row.Cells["借書"] as DataGridViewButtonCell : null;
                 if (cellRent != null)
                 {
@@ -1707,52 +1707,82 @@ WHERE 1=1";
                         cellRent.Value = "借書";
                 }
 
-                // 安全地獲取預約按鈕儲存格並設置其值和狀態
+                // 優化預約按鈕邏輯
                 var cellReserve = (dgvUserComics.Columns.Contains("預約") && row.Cells["預約"] != null) ? row.Cells["預約"] as DataGridViewButtonCell : null;
                 if (cellReserve != null)
                 {
-                    if (reserveStatus == "已被預約")
+                    // Add check for borrow cooling period impacting reservation
+                    if (IsUserInCoolingPeriod(loggedInUserId, comicId))
                     {
-                         // 查詢預約者是否為自己 (同步呼叫，應影響較小)
-                         string sql = "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-                         var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
-                             new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                         });
-                         int reservedUserId = dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["user_id"]) : -1;
+                        cellReserve.Value = "不可預約"; // 設定按鈕文字
+                        if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray; // 設定文字顏色為灰色
+                        cellReserve.ReadOnly = true; // 設為只讀
+                    }
+                    else if (reserveStatus == "已被預約")
+                    {
+                        // 查詢預約者是否為自己
+                        string sql = "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+                        var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                        });
+                        int reservedUserId = dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["user_id"]) : -1;
 
                         if (reservedUserId == loggedInUserId)
                         {
-                            cellReserve.Value = "取消預約"; // 設定按鈕文字
+                            cellReserve.Value = "取消預約";
                             if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.DarkBlue;
                             cellReserve.ReadOnly = false;
                         }
                         else
                         {
-                            cellReserve.Value = "預約"; // 設定按鈕文字
+                            cellReserve.Value = "已被預約";
                             if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
                             cellReserve.ReadOnly = true;
                         }
                     }
                     else if (reserveStatus == "不可預約")
                     {
-                        cellReserve.Value = "預約"; // 設定按鈕文字
+                        cellReserve.Value = "不可預約";
                         if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
                         cellReserve.ReadOnly = true;
                     }
                     else // reserveStatus == "可預約"
                     {
-                        // 檢查是否在冷卻期 (同步呼叫，應影響較小)
-                        if (IsUserInReservationCoolingPeriod(loggedInUserId, comicId))
+                        // 檢查是否在預約冷卻期 (只在可預約時檢查預約冷卻期)
+                        string sqlCooling = @"SELECT reservation_date 
+                                            FROM reservation 
+                                            WHERE user_id = @uid 
+                                            AND comic_id = @cid 
+                                            AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR) 
+                                            ORDER BY reservation_date DESC 
+                                            LIMIT 1";
+                        var dtCooling = DBHelper.ExecuteQuery(sqlCooling, new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                        });
+
+                        if (dtCooling.Rows.Count > 0)
                         {
-                            cellReserve.Value = "冷卻中"; // 設定按鈕文字
-                            cellReserve.ReadOnly = true; // 設為只讀
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray; // 設定文字顏色為灰色
+                            DateTime lastReserveTime = Convert.ToDateTime(dtCooling.Rows[0]["reservation_date"]);
+                            double remainingHours = 24 - (DateTime.Now - lastReserveTime).TotalHours;
+                            if (remainingHours > 0)
+                            {
+                                cellReserve.Value = "冷卻中";
+                                cellReserve.ReadOnly = true;
+                                if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Gray;
+                            }
+                            else
+                            {
+                                cellReserve.Value = "預約";
+                                cellReserve.ReadOnly = false;
+                                if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black;
+                            }
                         }
                         else
                         {
-                            cellReserve.Value = "預約"; // 設定按鈕文字
-                            cellReserve.ReadOnly = false; // 設為可編輯
-                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black; // 設定文字顏色為黑色或其他非灰色
+                            cellReserve.Value = "預約";
+                            cellReserve.ReadOnly = false;
+                            if (cellReserve.Style != null) cellReserve.Style.ForeColor = System.Drawing.Color.Black;
                         }
                     }
                      // fallback 預設 (保持不變)
@@ -1760,23 +1790,23 @@ WHERE 1=1";
                         cellReserve.Value = "預約";
                 }
             }
-             // 自動選中上次操作的 comicId
+
+            // 自動選中上次操作的 comicId
             if (lastActionComicId > 0)
             {
                 foreach (DataGridViewRow row in dgvUserComics.Rows)
                 {
                     if (row.IsNewRow) continue;
                     int cid = 0;
-                     if (dgvUserComics.Columns.Contains("書號") && row.Cells["書號"] != null && row.Cells["書號"].Value != null)
+                    if (dgvUserComics.Columns.Contains("書號") && row.Cells["書號"] != null && row.Cells["書號"].Value != null)
                         int.TryParse(row.Cells["書號"].Value.ToString(), out cid);
                     if (cid == lastActionComicId)
                     {
                         row.Selected = true;
-                         // Ensure "書名" column exists before accessing it
-                         if (dgvUserComics.Columns.Contains("書名"))
-                         {
+                        if (dgvUserComics.Columns.Contains("書名"))
+                        {
                             dgvUserComics.CurrentCell = row.Cells["書名"];
-                         }
+                        }
                         break;
                     }
                 }
@@ -1868,19 +1898,13 @@ WHERE 1=1";
                 else if (reserveStatus == "可預約")
                 {
                     // 檢查是否在冷卻期
-                    if (IsUserInReservationCoolingPeriod(loggedInUserId, comicId))
-                    {
-                        MessageBox.Show("您仍在預約冷卻期內，無法預約此書。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        await HandleReserveAction(comicId);
-                        // 異步刷新主頁漫畫列表
-                        await RefreshUserComicsGrid(searchTerm, searchType);
-                        // 刷新預約紀錄列表，並刷新所有 sections 以更新主頁狀態
-                        await RefreshReserveRecordsAsync();
-                        await RefreshAllSectionsAsync();
-                    }
+                    // Removed redundant cooling period check to ensure HandleReserveAction displays the detailed message.
+                    await HandleReserveAction(comicId);
+                    // 異步刷新主頁漫畫列表
+                    await RefreshUserComicsGrid(searchTerm, searchType);
+                    // 刷新預約紀錄列表，並刷新所有 sections 以更新主頁狀態
+                    await RefreshReserveRecordsAsync();
+                    await RefreshAllSectionsAsync();
                 }
                  else
                  {
@@ -2050,12 +2074,30 @@ WHERE 1=1";
         // 根據目前的狀態執行借書或還書操作
         private async Task HandleRentAction(int comicId)
         {
-             // 在這裡實現借書或還書的資料庫操作和邏輯判斷
-             // 這些邏輯已經在 btnBigRent_Click 中實現，可以直接拷貝過來或調用相應方法。
-             // 為了避免重複程式碼，建議將 btnBigRent_Click 中的核心邏輯提取到這裡。
-
             try
             {
+                // 檢查借書冷卻期並顯示詳細時間提示
+                string sqlLastReturn = "SELECT return_date FROM borrow_record WHERE user_id = @uid AND comic_id = @cid AND return_date IS NOT NULL ORDER BY return_date DESC LIMIT 1";
+                var dtReturn = DBHelper.ExecuteQuery(sqlLastReturn, new MySql.Data.MySqlClient.MySqlParameter[] {
+                    new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                });
+
+                if (dtReturn.Rows.Count > 0)
+                {
+                    DateTime lastReturnTime = Convert.ToDateTime(dtReturn.Rows[0]["return_date"]);
+                    TimeSpan elapsed = DateTime.Now - lastReturnTime;
+                    TimeSpan coolingDuration = TimeSpan.FromHours(24);
+                    TimeSpan remainingTime = coolingDuration - elapsed;
+
+                    if (remainingTime.TotalSeconds > 0)
+                    {
+                        string timeMessage = $"您仍在借閱冷卻期內，還需等待 {remainingTime.Hours} 小時 {remainingTime.Minutes} 分 {remainingTime.Seconds} 秒。";
+                        MessageBox.Show(timeMessage, "借閱失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return; // 顯示提示後終止操作
+                    }
+                }
+
                 // 先查詢最新狀態
                 string sqlBorrow = "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL";
                 var dtBorrow = DBHelper.ExecuteQuery(sqlBorrow, new MySql.Data.MySqlClient.MySqlParameter[] {
@@ -2143,6 +2185,28 @@ WHERE 1=1";
                     return; // 終止操作
                 }
 
+                // 檢查借書冷卻期並顯示詳細時間提示
+                string sqlLastReturn = "SELECT return_date FROM borrow_record WHERE user_id = @uid AND comic_id = @cid AND return_date IS NOT NULL ORDER BY return_date DESC LIMIT 1";
+                var dtReturn = DBHelper.ExecuteQuery(sqlLastReturn, new MySql.Data.MySqlClient.MySqlParameter[] {
+                    new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                });
+
+                if (dtReturn.Rows.Count > 0)
+                {
+                    DateTime lastReturnTime = Convert.ToDateTime(dtReturn.Rows[0]["return_date"]);
+                    TimeSpan elapsed = DateTime.Now - lastReturnTime;
+                    TimeSpan coolingDuration = TimeSpan.FromHours(24);
+                    TimeSpan remainingTime = coolingDuration - elapsed;
+
+                    if (remainingTime.TotalSeconds > 0)
+                    {
+                        string timeMessage = $"您剛歸還此書，正在借閱冷卻期內，還需等待 {remainingTime.Hours} 小時 {remainingTime.Minutes} 分 {remainingTime.Seconds} 秒。";
+                        MessageBox.Show(timeMessage, "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return; // 顯示提示後終止操作
+                    }
+                }
+
                 // 查詢最新借閱狀態 (同步呼叫，因為需要即時判斷是否可預約)
                 string sqlBorrow = "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL";
                 var dtBorrow = DBHelper.ExecuteQuery(sqlBorrow, new MySql.Data.MySqlClient.MySqlParameter[] {
@@ -2154,6 +2218,32 @@ WHERE 1=1";
                 {
                     MessageBox.Show("此書已被借出，無法預約。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return; // 終止操作
+                }
+
+                // 檢查預約冷卻期 (只在嘗試新增預約時檢查)
+                string sqlCooling = @"SELECT reservation_date 
+                            FROM reservation 
+                            WHERE user_id = @uid 
+                            AND comic_id = @cid 
+                            AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR) 
+                            ORDER BY reservation_date DESC 
+                            LIMIT 1";
+                var dtCooling = DBHelper.ExecuteQuery(sqlCooling, new MySql.Data.MySqlClient.MySqlParameter[] {
+                    new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                });
+
+                if (dtCooling.Rows.Count > 0)
+                {
+                    DateTime lastReserveTime = Convert.ToDateTime(dtCooling.Rows[0]["reservation_date"]);
+                    TimeSpan remainingTime = TimeSpan.FromHours(24) - (DateTime.Now - lastReserveTime);
+                    // 只有剩餘時間大於0才顯示詳細提示
+                    if (remainingTime.TotalSeconds > 0)
+                    {
+                        string timeMessage = $"您仍在預約冷卻期內，還需等待 {remainingTime.Hours} 小時 {remainingTime.Minutes} 分 {remainingTime.Seconds} 秒。";
+                        MessageBox.Show(timeMessage, "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return; // 顯示提示後終止操作
+                    }
                 }
 
                 // 查詢預約狀態 (同步呼叫，因為需要即時判斷是新增還是取消預約)
@@ -2190,13 +2280,6 @@ WHERE 1=1";
                 else if (activeReservation != null)
                 {
                     MessageBox.Show("此書已被預約，無法再次預約。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return; // 終止操作
-                }
-
-                // 檢查預約冷卻期 (只在嘗試新增預約時檢查)
-                if (IsUserInReservationCoolingPeriod(loggedInUserId, comicId))
-                {
-                    MessageBox.Show("您仍在預約冷卻期內，無法預約此書。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return; // 終止操作
                 }
 
