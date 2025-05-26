@@ -82,9 +82,43 @@ namespace WinFormsApp1
             this.panelUserContent.Padding = new System.Windows.Forms.Padding(0);
             this.panelUserContent.Margin = new System.Windows.Forms.Padding(0);
             this.panelUserContent.Controls.Clear();
+            this.dgvComics.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right))); // 停靠設定，使其隨視窗大小變化
+            this.dgvComics.AllowUserToAddRows = false;
+            this.dgvComics.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvComics.Location = new System.Drawing.Point(0, 0); // 相對於 panelUserContent 的位置
+            this.dgvComics.Name = "dgvComics";
+            this.dgvComics.RowTemplate.Height = 48;
+            this.dgvComics.RowHeadersWidth = 60;
+            this.dgvComics.Size = new System.Drawing.Size(800, 300); // 調整大小，為下方操作面板留空間
+            this.dgvComics.TabIndex = 0;
+            this.dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
+            this.dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
             this.dgvComics.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
-            this.dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
+
+            // 設定 DataGridView 基本樣式
+            this.dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F); // 設定字體
+            this.dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold); // 設定標題字體
+            this.dgvComics.EnableHeadersVisualStyles = false; // 禁用視覺樣式以設定背景色
+            this.dgvComics.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke; // 設定標題背景色為灰色
+            
+            // 禁用不必要的用戶交互
+            this.dgvComics.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill; // 讓欄位自動填滿
+            this.dgvComics.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None; // 禁用行高自動調整
+            this.dgvComics.AllowUserToResizeRows = false; // 禁用用戶調整行高
+            this.dgvComics.AllowUserToResizeColumns = true; // 允許用戶調整列寬
+            this.dgvComics.SelectionMode = DataGridViewSelectionMode.FullRowSelect; // 整行選取
+            this.dgvComics.MultiSelect = false; // 禁用多重選取
+            this.dgvComics.ReadOnly = true; // 設定為只讀
+            this.dgvComics.AllowUserToDeleteRows = false; // 禁用刪除行
+            this.dgvComics.AllowUserToOrderColumns = false; // 禁用重新排序欄位
+
+            // 其他屬性
+            this.dgvComics.StandardTab = true;
+            this.dgvComics.TabStop = true;
+            this.dgvComics.BackgroundColor = System.Drawing.Color.White; // 設定背景色
+
             this.panelUserContent.Controls.Add(this.dgvComics);
             this.panelUserContent.Location = new System.Drawing.Point(0, 50); // 調整位置，在 headerPanel 下方
             this.panelUserContent.Name = "panelUserContent";
@@ -154,24 +188,6 @@ namespace WinFormsApp1
             this.lblTitle.Size = new System.Drawing.Size(43, 15);
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "標題：";
-            // 
-            // dgvComics
-            // 
-            // 漫畫列表 DataGridView
-            this.dgvComics.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right))); // 停靠設定，使其隨視窗大小變化
-            this.dgvComics.AllowUserToAddRows = false;
-            this.dgvComics.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvComics.Location = new System.Drawing.Point(0, 0); // 相對於 panelUserContent 的位置
-            this.dgvComics.Name = "dgvComics";
-            this.dgvComics.RowTemplate.Height = 48;
-            this.dgvComics.RowHeadersWidth = 60;
-            this.dgvComics.Size = new System.Drawing.Size(800, 300); // 調整大小，為下方操作面板留空間
-            this.dgvComics.TabIndex = 0;
-            this.dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
-            this.dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
-            this.dgvComics.Dock = System.Windows.Forms.DockStyle.Fill;
             // 
             // btnSearch
             // 

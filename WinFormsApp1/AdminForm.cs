@@ -43,15 +43,32 @@ namespace WinFormsApp1
             this.Text = $"漫畫租書及預約系統 - 管理員介面（ID:{userId} 用戶名:{username}）";
             
             // 設定字體大小
-            this.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
-            dgvUser.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
-            dgvUser.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
-            dgvComic.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
-            dgvComic.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
-            dgvBorrow.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
-            dgvBorrow.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
-            dgvReserve.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
-            dgvReserve.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
+            this.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
+            
+            // 設定所有 DataGridView 的行高和標題列樣式
+            dgvUser.RowTemplate.Height = 30;
+            dgvUser.EnableHeadersVisualStyles = false;
+            dgvUser.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+            dgvUser.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
+            dgvUser.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
+            
+            dgvComic.RowTemplate.Height = 30;
+            dgvComic.EnableHeadersVisualStyles = false;
+            dgvComic.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+            dgvComic.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
+            dgvComic.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
+            
+            dgvBorrow.RowTemplate.Height = 30;
+            dgvBorrow.EnableHeadersVisualStyles = false;
+            dgvBorrow.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+            dgvBorrow.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
+            dgvBorrow.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
+            
+            dgvReserve.RowTemplate.Height = 30;
+            dgvReserve.EnableHeadersVisualStyles = false;
+            dgvReserve.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+            dgvReserve.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
+            dgvReserve.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
             
             EnsureUserActionButtons();
             InitializeEventHandlers();
@@ -285,12 +302,83 @@ namespace WinFormsApp1
             }
         }
 
-        // 用戶搜尋
+        // 用戶管理分頁
+        private async Task RefreshUserRecordsAsync(
+            string keyword = null, 
+            string searchType = "用戶名", // 新增 searchType 參數，預設用戶名
+            bool applyPagination = false,
+            int page = 1)
+        {
+            try
+            {
+                string sql = @"SELECT user_id AS 用戶ID, username AS 用戶名, role AS 角色 
+                             FROM user 
+                             WHERE 1=1";
+                var paramList = new List<MySqlParameter>();
+
+                // 根據搜尋類型構建 WHERE 子句
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                    if (searchType == "用戶ID")
+                    {
+                        // 如果選擇用戶ID搜尋，嚴格檢查是否為數字
+                        if (int.TryParse(keyword, out int userId))
+                        {
+                            sql += " AND user_id = @userId";
+                            paramList.Add(new MySqlParameter("@userId", userId));
+                        }
+                        else
+                        {
+                            // 如果不是有效的數字，不進行搜尋，可以考慮返回空結果或提示
+                            // 這裡選擇一個永遠不為真的條件，以返回空集
+                            sql += " AND 1 = 0"; 
+                            // 或者您希望提示用戶？可以在這裡加 MessageBox，但 await 會影響 UI 線程
+                            // MessageBox.Show("用戶ID必須是數字", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            // return; // 如果要提示並停止，需要重新考慮 async Task 的處理
+                        }
+                    }
+                    else // 用戶名搜尋 (模糊匹配)
+                    {
+                         sql += " AND username LIKE @keyword";
+                         paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
+                    }
+                }
+
+                sql += " ORDER BY user_id";
+
+                // 如果應用分頁，則加入 LIMIT 條件
+                if (applyPagination)
+                {
+                    sql += " LIMIT @offset, @pageSize";
+                    paramList.Add(new MySqlParameter("@offset", (page - 1) * PageSize));
+                    paramList.Add(new MySqlParameter("@pageSize", PageSize));
+                }
+
+                var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
+                
+                // 在 UI 線程上更新 DataGridView
+                this.Invoke((MethodInvoker)delegate {
+                     dgvUser.DataSource = null; // 保留此行
+                     dgvUser.DataSource = dt;   // 保留此行
+                     // 將 SetUserGridColumnWidths 的呼叫移到這裡，確保在所有列存在後再設定 DisplayIndex
+                     SetUserGridColumnWidths(); // 將呼叫移到 Refresh() 之前
+                     dgvUser.Refresh();         // 將呼叫移到 SetUserGridColumnWidths() 之後
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"刷新用戶資料時發生錯誤：{ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // 用戶搜尋按鈕點擊事件
         private async void btnUserSearch_Click(object sender, EventArgs e)
         {
             string searchTerm = txtSearchUser.Text.Trim();
-            // 搜尋用戶，傳入關鍵字，不應用分頁，獲取所有符合條件的結果
-            await RefreshUserRecordsAsync(keyword: searchTerm, applyPagination: false);
+            string searchType = cmbUserSearchType.SelectedItem?.ToString() ?? "用戶名"; // 預設用戶名搜尋
+
+            // 呼叫修改後的 RefreshUserRecordsAsync 方法
+            await RefreshUserRecordsAsync(keyword: searchTerm, searchType: searchType, applyPagination: false);
         }
 
         private async void btnComicSearch_Click(object sender, EventArgs e)
@@ -535,7 +623,8 @@ namespace WinFormsApp1
             {
                 string sql = @"SELECT b.borrow_id AS 編號, u.username AS 用戶, 
                              c.title AS 書名, c.isbn AS ISBN, 
-                             b.borrow_date AS 借閱日期, b.return_date AS 歸還日期
+                             b.borrow_date AS 借閱日期, b.return_date AS 歸還日期,
+                             CASE WHEN b.return_date IS NOT NULL THEN '已歸還' ELSE '未歸還' END AS 狀態
                              FROM borrow_record b
                              JOIN user u ON b.user_id = u.user_id
                              JOIN comic c ON b.comic_id = c.comic_id
@@ -577,7 +666,13 @@ namespace WinFormsApp1
             {
                 string sql = @"SELECT r.reservation_id AS 編號, u.username AS 用戶, 
                              c.title AS 書名, c.isbn AS ISBN, 
-                             r.reservation_date AS 預約日期, r.status AS 狀態
+                             r.reservation_date AS 預約日期, 
+                             DATE_ADD(r.reservation_date, INTERVAL 1 DAY) AS 預約到期時間, 
+                             CASE 
+                                 WHEN r.status = 'active' THEN '預約中'
+                                 WHEN r.status = 'canceled' THEN '已取消'
+                                 ELSE r.status -- 保留其他未知狀態
+                             END AS 狀態
                              FROM reservation r
                              JOIN user u ON r.user_id = u.user_id
                              JOIN comic c ON r.comic_id = c.comic_id
@@ -631,102 +726,6 @@ namespace WinFormsApp1
                 MessageBox.Show($"初始化資料時發生錯誤：{ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
-        #region 用戶管理分頁
-        private async Task RefreshUserRecordsAsync(
-            string keyword = null, 
-            bool applyPagination = false,
-            int page = 1)
-        {
-            try
-            {
-                string sql = @"SELECT user_id AS 用戶ID, username AS 用戶名, role AS 角色 
-                             FROM user 
-                             WHERE 1=1";
-                var paramList = new List<MySqlParameter>();
-
-                // 如果提供了關鍵字，並且不為空白，則應用搜尋條件
-                if (!string.IsNullOrWhiteSpace(keyword))
-                {
-                    sql += " AND username LIKE @keyword";
-                    paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
-                }
-
-                sql += " ORDER BY user_id";
-
-                // 如果應用分頁，則加入 LIMIT 條件
-                if (applyPagination)
-                {
-                    sql += " LIMIT @offset, @pageSize";
-                    paramList.Add(new MySqlParameter("@offset", (page - 1) * PageSize));
-                    paramList.Add(new MySqlParameter("@pageSize", PageSize));
-                }
-
-                var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                
-                // 在 UI 線程上更新 DataGridView
-                this.Invoke((MethodInvoker)delegate {
-                     dgvUser.DataSource = null; // 保留此行
-                     dgvUser.DataSource = dt;   // 保留此行
-                     // 將 SetUserGridColumnWidths 的呼叫移到這裡，確保在所有列存在後再設定 DisplayIndex
-                     SetUserGridColumnWidths(); // 將呼叫移到 Refresh() 之前
-                     dgvUser.Refresh();         // 將呼叫移到 SetUserGridColumnWidths() 之後
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"刷新用戶資料時發生錯誤：{ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-        #endregion
-
-        #region 漫畫管理分頁
-        private async Task RefreshComicRecordsAsync()
-        {
-            try
-            {
-                string sql = @"SELECT comic_id AS 書號, title AS 書名, isbn AS ISBN,
-                             author AS 作者, publisher AS 出版社, category AS 分類 
-                             FROM comic WHERE 1=1";
-                var paramList = new List<MySqlParameter>();
-
-                if (!string.IsNullOrWhiteSpace(currentComicSearchKeyword))
-                {
-                    if (currentComicSearchType == "書號" && int.TryParse(currentComicSearchKeyword, out int comicId))
-                    {
-                        sql += " AND comic_id = @comic_id";
-                        paramList.Add(new MySqlParameter("@comic_id", comicId));
-                    }
-                    else
-                    {
-                        string field = currentComicSearchType switch
-                        {
-                            "書名" => "title",
-                            "ISBN" => "isbn",
-                            "作者" => "author",
-                            "出版社" => "publisher",
-                            "分類" => "category",
-                            _ => "comic_id"
-                        };
-                        sql += $" AND {field} LIKE @keyword";
-                        paramList.Add(new MySqlParameter("@keyword", "%" + currentComicSearchKeyword + "%"));
-                    }
-                }
-
-                sql += " ORDER BY comic_id LIMIT @offset, @pageSize";
-                paramList.Add(new MySqlParameter("@offset", (currentComicPage - 1) * PageSize));
-                paramList.Add(new MySqlParameter("@pageSize", PageSize));
-
-                var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                dgvComic.DataSource = dt;
-                SetComicGridColumnWidths();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"刷新漫畫資料時發生錯誤：{ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-        #endregion
 
         #region 通用方法
         private void UpdatePagingControls(DataGridView dgv, int currentPage, Button btnPrev, Button btnNext, Label lblPage)
@@ -800,18 +799,67 @@ namespace WinFormsApp1
         }
         private void SetBorrowGridColumnWidths()
         {
-            if (dgvBorrow.Columns.Contains("書名")) dgvBorrow.Columns["書名"].Width = 250;
+            // 明確設定各欄位寬度，只讓書名自動填滿
+            if (dgvBorrow.Columns.Contains("編號")) dgvBorrow.Columns["編號"].Width = 60;
+            if (dgvBorrow.Columns.Contains("用戶")) dgvBorrow.Columns["用戶"].Width = 100;
+            if (dgvBorrow.Columns.Contains("ISBN")) dgvBorrow.Columns["ISBN"].Width = 120; // 參考 UserForm 設定
+            if (dgvBorrow.Columns.Contains("借閱日期")) dgvBorrow.Columns["借閱日期"].Width = 160;
+            if (dgvBorrow.Columns.Contains("歸還日期")) dgvBorrow.Columns["歸還日期"].Width = 160;
+            if (dgvBorrow.Columns.Contains("狀態")) dgvBorrow.Columns["狀態"].Width = 80;
+
+            // 讓書名自動填滿剩餘空間
+            if (dgvBorrow.Columns.Contains("書名"))
+            {
+                 dgvBorrow.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            }
+            
+            // 確保狀態欄位在最後
+             if (dgvBorrow.Columns.Contains("狀態"))
+            {
+                dgvBorrow.Columns["狀態"].DisplayIndex = dgvBorrow.Columns.Count - 1; 
+            }
+
+            // 將其他未明確設定寬度的欄位 AutoSizeMode 設為 None，防止擠壓
             foreach (DataGridViewColumn col in dgvBorrow.Columns)
             {
-                if (col.Name != "書名") col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                if (!new[] {"編號", "用戶", "書名", "ISBN", "借閱日期", "歸還日期", "狀態"}.Contains(col.Name))
+                {
+                    col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                }
             }
         }
         private void SetReserveGridColumnWidths()
         {
-            if (dgvReserve.Columns.Contains("書名")) dgvReserve.Columns["書名"].Width = 250;
-            foreach (DataGridViewColumn col in dgvReserve.Columns)
+            // 明確設定各欄位寬度
+            if (dgvReserve.Columns.Contains("編號")) dgvReserve.Columns["編號"].Width = 60;
+            if (dgvReserve.Columns.Contains("用戶")) dgvReserve.Columns["用戶"].Width = 100;
+            if (dgvReserve.Columns.Contains("ISBN")) dgvReserve.Columns["ISBN"].Width = 120;
+            if (dgvReserve.Columns.Contains("預約日期")) dgvReserve.Columns["預約日期"].Width = 160;
+            if (dgvReserve.Columns.Contains("預約到期時間")) dgvReserve.Columns["預約到期時間"].Width = 160;
+            if (dgvReserve.Columns.Contains("狀態")) dgvReserve.Columns["狀態"].Width = 80;
+
+            // 讓書名自動填滿剩餘空間
+            if (dgvReserve.Columns.Contains("書名"))
             {
-                if (col.Name != "書名") col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                 dgvReserve.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            }
+            
+            // 設定顯示順序
+            if (dgvReserve.Columns.Contains("編號")) dgvReserve.Columns["編號"].DisplayIndex = 0;
+            if (dgvReserve.Columns.Contains("用戶")) dgvReserve.Columns["用戶"].DisplayIndex = 1;
+            if (dgvReserve.Columns.Contains("書名")) dgvReserve.Columns["書名"].DisplayIndex = 2;
+            if (dgvReserve.Columns.Contains("ISBN")) dgvReserve.Columns["ISBN"].DisplayIndex = 3;
+            if (dgvReserve.Columns.Contains("預約日期")) dgvReserve.Columns["預約日期"].DisplayIndex = 4;
+            if (dgvReserve.Columns.Contains("預約到期時間")) dgvReserve.Columns["預約到期時間"].DisplayIndex = 5;
+            if (dgvReserve.Columns.Contains("狀態")) dgvReserve.Columns["狀態"].DisplayIndex = 6;
+
+            // 確保其他欄位沒有 AutoSizeMode.Fill
+             foreach (DataGridViewColumn col in dgvReserve.Columns)
+            {
+                if (col.Name != "書名")
+                {
+                    col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; // 確保其他欄位不自動填充
+                }
             }
         }
         private void SetComicGridColumnWidths()
@@ -924,6 +972,53 @@ namespace WinFormsApp1
             catch
             {
                 return "未知用戶";
+            }
+        }
+
+        // 漫畫管理分頁
+        private async Task RefreshComicRecordsAsync()
+        {
+            try
+            {
+                string sql = @"SELECT comic_id AS 書號, title AS 書名, isbn AS ISBN,
+                             author AS 作者, publisher AS 出版社, category AS 分類 
+                             FROM comic WHERE 1=1";
+                var paramList = new List<MySqlParameter>();
+
+                if (!string.IsNullOrWhiteSpace(currentComicSearchKeyword))
+                {
+                    if (currentComicSearchType == "書號" && int.TryParse(currentComicSearchKeyword, out int comicId))
+                    {
+                        sql += " AND comic_id = @comic_id";
+                        paramList.Add(new MySqlParameter("@comic_id", comicId));
+                    }
+                    else
+                    {
+                        string field = currentComicSearchType switch
+                        {
+                            "書名" => "title",
+                            "ISBN" => "isbn",
+                            "作者" => "author",
+                            "出版社" => "publisher",
+                            "分類" => "category",
+                            _ => "comic_id"
+                        };
+                        sql += $" AND {field} LIKE @keyword";
+                        paramList.Add(new MySqlParameter("@keyword", "%" + currentComicSearchKeyword + "%"));
+                    }
+                }
+
+                sql += " ORDER BY comic_id LIMIT @offset, @pageSize";
+                paramList.Add(new MySqlParameter("@offset", (currentComicPage - 1) * PageSize));
+                paramList.Add(new MySqlParameter("@pageSize", PageSize));
+
+                var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
+                dgvComic.DataSource = dt;
+                SetComicGridColumnWidths();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"刷新漫畫資料時發生錯誤：{ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

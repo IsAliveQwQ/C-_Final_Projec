@@ -50,6 +50,7 @@ namespace WinFormsApp1
             this.btnEditComic = new System.Windows.Forms.Button();
             this.panelUserSearch = new System.Windows.Forms.Panel();
             this.txtSearchUser = new System.Windows.Forms.TextBox();
+            this.cmbUserSearchType = new System.Windows.Forms.ComboBox();
             this.btnUserSearch = new System.Windows.Forms.Button();
             this.btnAddUser = new System.Windows.Forms.Button();
             this.btnDeleteUser = new System.Windows.Forms.Button();
@@ -264,6 +265,7 @@ namespace WinFormsApp1
             this.panelUserSearch.Height = 40;
             this.panelUserSearch.Controls.Clear();
             this.panelUserSearch.Controls.Add(this.txtSearchUser);
+            this.panelUserSearch.Controls.Add(this.cmbUserSearchType);
             this.panelUserSearch.Controls.Add(this.btnUserSearch);
             this.panelUserSearch.Controls.Add(this.btnAddUser);
             this.panelUserSearch.Controls.Add(this.btnDeleteUser);
@@ -274,21 +276,29 @@ namespace WinFormsApp1
             this.txtSearchUser.Location = new System.Drawing.Point(10, 6);
             this.txtSearchUser.Size = new System.Drawing.Size(180, 27);
             //
+            // cmbUserSearchType
+            //
+            this.cmbUserSearchType.Location = new System.Drawing.Point(200, 6);
+            this.cmbUserSearchType.Size = new System.Drawing.Size(80, 27);
+            this.cmbUserSearchType.Items.AddRange(new object[] { "用戶ID", "用戶名" });
+            this.cmbUserSearchType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbUserSearchType.SelectedIndex = 1;
+            //
             // btnUserSearch
             //
-            this.btnUserSearch.Location = new System.Drawing.Point(200, 6);
+            this.btnUserSearch.Location = new System.Drawing.Point(290, 6);
             this.btnUserSearch.Size = new System.Drawing.Size(70, 27);
             this.btnUserSearch.Text = "搜尋";
             //
             // btnAddUser
             //
-            this.btnAddUser.Location = new System.Drawing.Point(290, 6);
+            this.btnAddUser.Location = new System.Drawing.Point(370, 6);
             this.btnAddUser.Size = new System.Drawing.Size(90, 27);
             this.btnAddUser.Text = "新增用戶";
             //
             // btnDeleteUser
             //
-            this.btnDeleteUser.Location = new System.Drawing.Point(390, 6);
+            this.btnDeleteUser.Location = new System.Drawing.Point(470, 6);
             this.btnDeleteUser.Size = new System.Drawing.Size(90, 27);
             this.btnDeleteUser.Text = "刪除用戶";
             //
@@ -352,7 +362,7 @@ namespace WinFormsApp1
             //
             // btnRefreshUser
             //
-            this.btnRefreshUser.Location = new System.Drawing.Point(490, 6);
+            this.btnRefreshUser.Location = new System.Drawing.Point(570, 6);
             this.btnRefreshUser.Size = new System.Drawing.Size(90, 27);
             this.btnRefreshUser.Text = "刷新資料";
             //
@@ -403,6 +413,7 @@ namespace WinFormsApp1
         private System.Windows.Forms.Button btnEditComic;
         private System.Windows.Forms.Panel panelUserSearch;
         private System.Windows.Forms.TextBox txtSearchUser;
+        private System.Windows.Forms.ComboBox cmbUserSearchType;
         private System.Windows.Forms.Button btnUserSearch;
         private System.Windows.Forms.Button btnAddUser;
         private System.Windows.Forms.Button btnDeleteUser;

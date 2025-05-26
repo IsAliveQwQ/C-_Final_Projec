@@ -44,6 +44,28 @@ namespace WinFormsApp1
                 dgvComics,
                 new object[] { true });
 
+            // 設定 DataGridView 基本樣式
+            dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
+            dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
+            dgvComics.RowTemplate.Height = 48;
+            dgvComics.RowHeadersWidth = 60;
+            dgvComics.EnableHeadersVisualStyles = false;
+            dgvComics.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+            dgvComics.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvComics.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvComics.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
+            dgvComics.AllowUserToResizeRows = false;
+            dgvComics.AllowUserToResizeColumns = true;
+            dgvComics.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvComics.MultiSelect = false;
+            dgvComics.ReadOnly = true;
+            dgvComics.AllowUserToAddRows = false;
+            dgvComics.AllowUserToDeleteRows = false;
+            dgvComics.AllowUserToOrderColumns = false;
+            dgvComics.StandardTab = true;
+            dgvComics.TabStop = true;
+            dgvComics.TabIndex = 0;
+
             // 設定表單標題
             string username = GetUsernameById(userId);
             this.Text = $"漫畫租書及預約系統 - 使用者介面（ID:{userId} 用戶名:{username}）";

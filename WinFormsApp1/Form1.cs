@@ -28,7 +28,7 @@ namespace WinFormsApp1
         public Form1()
         {
             InitializeComponent();
-            this.Text = "漫畫租書系統 - 登入";
+            this.Text = "漫畫租書及預約系統 - 登入";
             this.btnLogin.Click += new System.EventHandler(this.btnLogin_Click);
             this.btnRegister.Click += new System.EventHandler(this.btnRegister_Click); // 註冊按鈕事件
             this.Load += new System.EventHandler(this.Form1_Load);
