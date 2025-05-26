@@ -50,9 +50,9 @@ namespace WinFormsApp1
             this.loggedInUserId = userId;
             this.loggedInUserRole = userRole; // 保存用戶角色
 
-            // 設定視窗大小為螢幕 60%，並置中
+            // 設定視窗大小為固定寬度 1042，高度為螢幕 60%，並置中
             var screen = Screen.PrimaryScreen.WorkingArea;
-            this.Size = new Size((int)(screen.Width * 0.6), (int)(screen.Height * 0.6));
+            this.Size = new Size(1042, (int)(screen.Height * 0.6));
             this.StartPosition = FormStartPosition.CenterScreen;
 
             // 為搜尋按鈕添加點擊事件
@@ -1068,14 +1068,13 @@ namespace WinFormsApp1
         // 設定借閱紀錄欄位屬性和按鈕狀態
         private void SetBorrowGridSettingsAndButtonStatus()
         {
-            if (dgvBorrowRecord == null || dgvBorrowRecord.Columns.Count == 0) return; // 檢查 dgvBorrowRecord 和 Columns 是否存在
+            if (dgvBorrowRecord == null || dgvBorrowRecord.Columns.Count == 0) return; // 檢查 DataGridView 和 Columns 是否存在
 
             // 設定 DataGridView 屬性 (只設定一次，而不是每次數據綁定都設定)
             dgvBorrowRecord.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
             dgvBorrowRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
             dgvBorrowRecord.RowTemplate.Height = 36;
             dgvBorrowRecord.RowHeadersWidth = 60;
-            dgvBorrowRecord.ColumnHeadersHeight = 48;
             dgvBorrowRecord.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
             dgvBorrowRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             dgvBorrowRecord.EnableHeadersVisualStyles = false;
@@ -1941,7 +1940,6 @@ WHERE 1=1";
             dgvReserveRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
             dgvReserveRecord.RowTemplate.Height = 36;
             dgvReserveRecord.RowHeadersWidth = 60;
-            dgvReserveRecord.ColumnHeadersHeight = 24;
             dgvReserveRecord.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
             dgvReserveRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             dgvReserveRecord.EnableHeadersVisualStyles = false;

@@ -47,6 +47,7 @@ namespace WinFormsApp1
             this.btnComicSearch = new System.Windows.Forms.Button();
             this.btnAddComic = new System.Windows.Forms.Button();
             this.btnDeleteComic = new System.Windows.Forms.Button();
+            this.btnEditComic = new System.Windows.Forms.Button();
             this.panelUserSearch = new System.Windows.Forms.Panel();
             this.txtSearchUser = new System.Windows.Forms.TextBox();
             this.btnUserSearch = new System.Windows.Forms.Button();
@@ -216,6 +217,7 @@ namespace WinFormsApp1
             this.panelComicSearch.Controls.Add(this.cmbComicSearchType);
             this.panelComicSearch.Controls.Add(this.btnComicSearch);
             this.panelComicSearch.Controls.Add(this.btnAddComic);
+            this.panelComicSearch.Controls.Add(this.btnEditComic);
             this.panelComicSearch.Controls.Add(this.btnDeleteComic);
             this.panelComicSearch.Controls.Add(this.btnRefreshComic);
             //
@@ -244,9 +246,15 @@ namespace WinFormsApp1
             this.btnAddComic.Size = new System.Drawing.Size(90, 27);
             this.btnAddComic.Text = "新增漫畫";
             //
+            // btnEditComic
+            //
+            this.btnEditComic.Location = new System.Drawing.Point(480, 6);
+            this.btnEditComic.Size = new System.Drawing.Size(90, 27);
+            this.btnEditComic.Text = "修改漫畫";
+            //
             // btnDeleteComic
             //
-            this.btnDeleteComic.Location = new System.Drawing.Point(480, 6);
+            this.btnDeleteComic.Location = new System.Drawing.Point(580, 6);
             this.btnDeleteComic.Size = new System.Drawing.Size(90, 27);
             this.btnDeleteComic.Text = "刪除漫畫";
             //
@@ -303,8 +311,8 @@ namespace WinFormsApp1
             //
             this.cmbBorrowSearchType.Location = new System.Drawing.Point(200, 6);
             this.cmbBorrowSearchType.Size = new System.Drawing.Size(80, 27);
-            this.cmbBorrowSearchType.Items.Clear();
-            this.cmbBorrowSearchType.Items.AddRange(new object[] { "用戶" });
+            this.cmbBorrowSearchType.Items.AddRange(new object[] { "用戶", "書名", "ISBN" });
+            this.cmbBorrowSearchType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbBorrowSearchType.SelectedIndex = 0;
             //
             // btnBorrowSearch
@@ -332,8 +340,8 @@ namespace WinFormsApp1
             //
             this.cmbReserveSearchType.Location = new System.Drawing.Point(200, 6);
             this.cmbReserveSearchType.Size = new System.Drawing.Size(80, 27);
-            this.cmbReserveSearchType.Items.Clear();
-            this.cmbReserveSearchType.Items.AddRange(new object[] { "用戶" });
+            this.cmbReserveSearchType.Items.AddRange(new object[] { "用戶", "書名", "ISBN" });
+            this.cmbReserveSearchType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbReserveSearchType.SelectedIndex = 0;
             //
             // btnReserveSearch
@@ -350,7 +358,7 @@ namespace WinFormsApp1
             //
             // btnRefreshComic
             //
-            this.btnRefreshComic.Location = new System.Drawing.Point(580, 6);
+            this.btnRefreshComic.Location = new System.Drawing.Point(680, 6);
             this.btnRefreshComic.Size = new System.Drawing.Size(90, 27);
             this.btnRefreshComic.Text = "刷新資料";
             //
@@ -370,7 +378,7 @@ namespace WinFormsApp1
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 500);
+            this.ClientSize = new System.Drawing.Size(1040, (int)(Screen.PrimaryScreen.Bounds.Height * 0.6));
             this.Controls.Add(this.tabAdmin);
             this.Name = "AdminForm";
             this.Text = "漫畫租書系統 - 管理員介面";
@@ -392,6 +400,7 @@ namespace WinFormsApp1
         private System.Windows.Forms.Button btnComicSearch;
         private System.Windows.Forms.Button btnAddComic;
         private System.Windows.Forms.Button btnDeleteComic;
+        private System.Windows.Forms.Button btnEditComic;
         private System.Windows.Forms.Panel panelUserSearch;
         private System.Windows.Forms.TextBox txtSearchUser;
         private System.Windows.Forms.Button btnUserSearch;
