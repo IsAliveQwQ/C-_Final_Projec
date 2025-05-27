@@ -1,25 +1,28 @@
+using System;
 using System.Windows.Forms;
 
 namespace WinFormsApp1
 {
-    public partial class AddUserForm : Form
+    public partial class RegisterForm : Form
     {
-        public AddUserForm()
+        public string Username { get; private set; }
+        public string Password { get; private set; }
+
+        public RegisterForm()
         {
             InitializeComponent();
         }
 
-        public string Username { get; private set; }
-        public string Password { get; private set; }
-
-        private void btnSave_Click(object sender, System.EventArgs e)
+        private void btnRegister_Click(object sender, EventArgs e)
         {
             Username = txtUsername.Text;
             Password = txtPassword.Text;
-            if (string.IsNullOrEmpty(Username) || string.IsNullOrEmpty(Password))
+
+            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
             {
                 MessageBox.Show("請輸入帳號與密碼！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                this.DialogResult = DialogResult.None; // Stay on the form
+                return; // Add return to stop further processing
             }
 
             // Add username minimum length validation
@@ -38,11 +41,12 @@ namespace WinFormsApp1
                 return; // Stop further processing
             }
 
+            // If validation passes
             this.DialogResult = DialogResult.OK;
             this.Close();
         }
 
-        private void btnCancel_Click(object sender, System.EventArgs e)
+        private void btnCancel_Click(object sender, EventArgs e)
         {
             this.DialogResult = DialogResult.Cancel;
             this.Close();

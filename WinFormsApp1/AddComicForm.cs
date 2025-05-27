@@ -26,6 +26,14 @@ namespace WinFormsApp1
             ComicPublisher = txtPublisher.Text;
             ComicCategory = txtCategory.Text;
 
+            // Validate ISBN is numeric
+            if (!long.TryParse(ComicISBN, out _))
+            {
+                MessageBox.Show("ISBN 必須是數字！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.DialogResult = DialogResult.None; // Stay on the form
+                return;
+            }
+
             // 設定 DialogResult 為 OK，表示用戶點擊了儲存
             this.DialogResult = DialogResult.OK;
             this.Close();

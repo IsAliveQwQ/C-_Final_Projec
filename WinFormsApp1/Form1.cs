@@ -137,7 +137,53 @@ namespace WinFormsApp1
         private void btnRegister_Click(object sender, EventArgs e)
         {
             // 這裡可以彈出註冊表單，暫時僅顯示訊息
-            MessageBox.Show("註冊功能尚未實作。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // MessageBox.Show("註冊功能尚未實作。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            using (RegisterForm registerForm = new RegisterForm())
+            {
+                if (registerForm.ShowDialog() == DialogResult.OK)
+                {
+                    string username = registerForm.Username;
+                    string password = registerForm.Password; // 注意：這裡獲取的是明文密碼，實際應用中應獲取並哈希
+
+                    try
+                    {
+                        // 檢查帳號是否已存在
+                        string checkSql = "SELECT COUNT(*) FROM user WHERE username = @username";
+                        MySqlParameter[] checkParams = { new MySqlParameter("@username", username) };
+                        long userCount = Convert.ToInt64(DBHelper.ExecuteScalar(checkSql, checkParams));
+
+                        if (userCount > 0)
+                        {
+                            MessageBox.Show("此帳號已被註冊，請使用其他帳號。", "註冊失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                        else
+                        {
+                            // 將新使用者插入資料庫，預設角色為 'user'，狀態為 'active'
+                            string insertSql = "INSERT INTO user (username, password_hash, role, status) VALUES (@username, @password, 'user', 'active')";
+                            MySqlParameter[] insertParams = {
+                                new MySqlParameter("@username", username),
+                                new MySqlParameter("@password", password) // 這裡應是哈希後的密碼
+                            };
+
+                            int rowsAffected = DBHelper.ExecuteNonQuery(insertSql, insertParams);
+
+                            if (rowsAffected > 0)
+                            {
+                                MessageBox.Show("註冊成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                            else
+                            {
+                                MessageBox.Show("註冊失敗，請稍後再試。", "失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("註冊時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
         }
 
         // 可以考慮為對話框添加一個取消按鈕
