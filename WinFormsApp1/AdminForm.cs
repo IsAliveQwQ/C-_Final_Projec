@@ -120,22 +120,18 @@ namespace WinFormsApp1
         }
 
         // 新增漫畫按鈕點擊事件處理器
-        private void btnAddComic_Click(object sender, EventArgs e)
+        private async void btnAddComic_Click(object sender, EventArgs e)
         {
-            // 創建 AddComicForm 的實例
             using (AddComicForm addComicForm = new AddComicForm())
             {
-                // 顯示 AddComicForm 作為對話框
                 if (addComicForm.ShowDialog() == DialogResult.OK)
                 {
-                    // 如果用戶點擊了儲存按鈕，獲取輸入的漫畫資訊
                     string title = addComicForm.ComicTitle;
                     string isbn = addComicForm.ComicISBN;
                     string author = addComicForm.ComicAuthor;
                     string publisher = addComicForm.ComicPublisher;
                     string category = addComicForm.ComicCategory;
 
-                    // 在這裡添加將漫畫資訊存入資料庫的邏輯
                     try
                     {
                         string sql = "INSERT INTO comic (title, isbn, author, publisher, category) " +
@@ -154,8 +150,7 @@ namespace WinFormsApp1
                         if (rowsAffected > 0)
                         {
                             MessageBox.Show("漫畫新增成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            // TODO: 刷新漫畫列表 DataGridView
-                            AdminForm_Load(null, null); // 刷新 DataGridView
+                            await RefreshComicRecordsAsync(applyPagination: false); // 刷新時不使用分頁
                         }
                         else
                         {
@@ -166,8 +161,6 @@ namespace WinFormsApp1
                     {
                         MessageBox.Show("新增漫畫時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
-
-                    // TODO: 刷新漫畫列表 DataGridView
                 }
             }
         }
@@ -175,26 +168,20 @@ namespace WinFormsApp1
         private async void AdminForm_Load(object sender, System.EventArgs e)
         {
             try
-              {
-                // 初始化載入時，呼叫 RefreshUserRecordsAsync 獲取所有用戶
-                await RefreshUserRecordsAsync();
-
-                // 查詢所有漫畫
-                string sqlComic = "SELECT comic_id AS 書號, isbn AS ISBN, title AS 書名, author AS 作者, publisher AS 出版社, category AS 分類 FROM comic ORDER BY comic_id";
-                var dtComic = await Task.Run(() => DBHelper.ExecuteQuery(sqlComic));
-                this.Invoke((MethodInvoker)delegate {
-                    dgvComic.DataSource = dtComic;
-                    SetComicGridColumnWidths();
-                });
+            {
+                // 初始化載入時，不使用分頁
+                await RefreshUserRecordsAsync(applyPagination: false);
+                await RefreshComicRecordsAsync(applyPagination: false);
+                
+                currentBorrowPage = 1;
+                currentReservePage = 1;
+                await RefreshBorrowRecordsAsync();
+                await RefreshReserveRecordsAsync();
             }
             catch (Exception ex)
             {
                 MessageBox.Show("載入資料時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            currentBorrowPage = 1;
-            currentReservePage = 1;
-            await RefreshBorrowRecordsAsync();
-            await RefreshReserveRecordsAsync();
         }
 
         // 新增用戶
@@ -386,7 +373,12 @@ namespace WinFormsApp1
             currentComicSearchKeyword = txtComicKeyword.Text.Trim();
             currentComicSearchType = cmbComicSearchType.SelectedItem?.ToString() ?? "書號";
             currentComicPage = 1;
-            await RefreshComicRecordsAsync();
+            await RefreshComicRecordsAsync(
+                keyword: currentComicSearchKeyword,
+                searchType: currentComicSearchType,
+                applyPagination: true,
+                page: currentComicPage
+            );
         }
 
         private async void btnBorrowSearch_Click(object sender, EventArgs e)
@@ -454,7 +446,7 @@ namespace WinFormsApp1
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        AdminForm_Load(null, null);
+                        RefreshComicRecordsAsync(applyPagination: false); // 刷新時不使用分頁
                     }
                     else
                     {
@@ -976,7 +968,11 @@ namespace WinFormsApp1
         }
 
         // 漫畫管理分頁
-        private async Task RefreshComicRecordsAsync()
+        private async Task RefreshComicRecordsAsync(
+            string keyword = null,
+            string searchType = "書號",
+            bool applyPagination = false,
+            int page = 1)
         {
             try
             {
@@ -985,16 +981,16 @@ namespace WinFormsApp1
                              FROM comic WHERE 1=1";
                 var paramList = new List<MySqlParameter>();
 
-                if (!string.IsNullOrWhiteSpace(currentComicSearchKeyword))
+                if (!string.IsNullOrWhiteSpace(keyword))
                 {
-                    if (currentComicSearchType == "書號" && int.TryParse(currentComicSearchKeyword, out int comicId))
+                    if (searchType == "書號" && int.TryParse(keyword, out int comicId))
                     {
                         sql += " AND comic_id = @comic_id";
                         paramList.Add(new MySqlParameter("@comic_id", comicId));
                     }
                     else
                     {
-                        string field = currentComicSearchType switch
+                        string field = searchType switch
                         {
                             "書名" => "title",
                             "ISBN" => "isbn",
@@ -1004,17 +1000,27 @@ namespace WinFormsApp1
                             _ => "comic_id"
                         };
                         sql += $" AND {field} LIKE @keyword";
-                        paramList.Add(new MySqlParameter("@keyword", "%" + currentComicSearchKeyword + "%"));
+                        paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
                     }
                 }
 
-                sql += " ORDER BY comic_id LIMIT @offset, @pageSize";
-                paramList.Add(new MySqlParameter("@offset", (currentComicPage - 1) * PageSize));
-                paramList.Add(new MySqlParameter("@pageSize", PageSize));
+                sql += " ORDER BY comic_id";
+
+                if (applyPagination)
+                {
+                    sql += " LIMIT @offset, @pageSize";
+                    paramList.Add(new MySqlParameter("@offset", (page - 1) * PageSize));
+                    paramList.Add(new MySqlParameter("@pageSize", PageSize));
+                }
 
                 var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                dgvComic.DataSource = dt;
-                SetComicGridColumnWidths();
+                
+                this.Invoke((MethodInvoker)delegate {
+                    dgvComic.DataSource = null;
+                    dgvComic.DataSource = dt;
+                    SetComicGridColumnWidths();
+                    dgvComic.Refresh();
+                });
             }
             catch (Exception ex)
             {

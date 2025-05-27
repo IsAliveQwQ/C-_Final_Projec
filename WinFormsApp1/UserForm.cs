@@ -26,7 +26,6 @@ namespace WinFormsApp1
         private System.Windows.Forms.TabPage tabPageHome;
         private System.Windows.Forms.TabPage tabPageBorrow;
         private System.Windows.Forms.TabPage tabPageReserve;
-        private System.Windows.Forms.TabPage tabPageProfile;
 
         // 使用者介面表單的建構子 (接收使用者 ID 和角色)
         public UserForm(int userId, string userRole)
@@ -152,7 +151,6 @@ namespace WinFormsApp1
             SetupHomePageLayout();
             SetupBorrowPageLayout();
             SetupReservePageLayout();
-            SetupProfilePageLayout();
 
             // 2. 設置基本 UI 屬性
             dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
@@ -1508,22 +1506,6 @@ LEFT JOIN (
             tabPageReserve.Controls.Add(panelSearch);
         }
 
-        private void SetupProfilePageLayout()
-        {
-            tabPageProfile.Controls.Clear();
-            // 會員中心簡單顯示用戶資訊
-            var lblInfo = new Label
-            {
-                Name = "lblProfileInfo",
-                Text = "會員中心功能開發中...",
-                Dock = DockStyle.Top,
-                Font = new System.Drawing.Font("Microsoft JhengHei UI", 14F),
-                Height = 60,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            tabPageProfile.Controls.Add(lblInfo);
-        }
-
         // 記錄上次操作的 comicId 以便刷新後自動選中
         private int lastActionComicId = 0;
 
@@ -1911,8 +1893,6 @@ LEFT JOIN (
             tabPageBorrow.Name = "tabPageBorrow";
             tabPageReserve = new TabPage("預約紀錄");
             tabPageReserve.Name = "tabPageReserve";
-            tabPageProfile = new TabPage("會員中心");
-            tabPageProfile.Name = "tabPageProfile";
 
             // 初始化 TabControl
             tabUserMain = new TabControl();
@@ -1921,7 +1901,6 @@ LEFT JOIN (
             tabUserMain.TabPages.Add(tabPageHome);
             tabUserMain.TabPages.Add(tabPageBorrow);
             tabUserMain.TabPages.Add(tabPageReserve);
-            tabUserMain.TabPages.Add(tabPageProfile);
 
             // 加入主表單控制項
             this.Controls.Add(tabUserMain);
@@ -1931,7 +1910,6 @@ LEFT JOIN (
             SetupHomePageLayout();
             SetupBorrowPageLayout();
             SetupReservePageLayout();
-            SetupProfilePageLayout();
         }
 
         // This method seems to set up the settings for the reserve record DataGridView.
