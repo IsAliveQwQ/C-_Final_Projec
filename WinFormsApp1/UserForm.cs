@@ -1040,13 +1040,16 @@ namespace WinFormsApp1
                 string sql = @"SELECT r.reservation_id, c.title, c.isbn, r.reservation_date,
                              DATE_ADD(r.reservation_date, INTERVAL 24 HOUR) as expiry_date,
                              CASE
-                                WHEN r.status = 'active' AND r.reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN '預約中'
-                                WHEN r.status = 'canceled' THEN '已取消'
-                                WHEN r.reservation_date <= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN '已過期'
-                                ELSE '未知'
+                                 -- 檢查是否有對應的借閱記錄（表示已完成預約）
+                                 WHEN br.borrow_id IS NOT NULL AND br.borrow_date >= r.reservation_date THEN '已完成'
+                                 WHEN r.status = 'active' AND r.reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN '預約中'
+                                 WHEN r.status = 'canceled' THEN '已取消'
+                                 WHEN r.reservation_date <= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN '已過期'
+                                 ELSE '未知'
                              END as status
                              FROM reservation r
                              JOIN comic c ON r.comic_id = c.comic_id
+                             LEFT JOIN borrow_record br ON r.user_id = br.user_id AND r.comic_id = br.comic_id AND br.borrow_date >= r.reservation_date
                              WHERE r.user_id = @userId";
 
                 var paramList = new List<MySqlParameter> {

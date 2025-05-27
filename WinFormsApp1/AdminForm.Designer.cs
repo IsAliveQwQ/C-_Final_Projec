@@ -464,47 +464,23 @@ namespace WinFormsApp1
             //
             this.panelLogSearch = new System.Windows.Forms.Panel();
             this.txtLogKeyword = new System.Windows.Forms.TextBox();
-            this.cmbLogSearchType = new System.Windows.Forms.ComboBox();
             this.btnLogSearch = new System.Windows.Forms.Button();
             this.btnRefreshLog = new System.Windows.Forms.Button();
             this.panelLogSearch.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelLogSearch.Height = 40;
             this.panelLogSearch.Controls.Clear();
             this.panelLogSearch.Controls.Add(this.txtLogKeyword);
-            this.panelLogSearch.Controls.Add(this.cmbLogSearchType);
             this.panelLogSearch.Controls.Add(this.btnLogSearch);
             this.panelLogSearch.Controls.Add(this.btnRefreshLog);
-            //
-            // txtLogKeyword
-            //
             this.txtLogKeyword.Location = new System.Drawing.Point(10, 8);
-            this.txtLogKeyword.Name = "txtLogKeyword";
             this.txtLogKeyword.Size = new System.Drawing.Size(180, 27);
-            //
-            // cmbLogSearchType
-            //
-            this.cmbLogSearchType.Location = new System.Drawing.Point(200, 8);
-            this.cmbLogSearchType.Name = "cmbLogSearchType";
-            this.cmbLogSearchType.Size = new System.Drawing.Size(120, 27);
-            this.cmbLogSearchType.Items.AddRange(new object[] { "所有操作", "新增用戶", "編輯用戶", "刪除用戶", "新增漫畫", "編輯漫畫", "刪除漫畫", "歸還漫畫", "取消預約" });
-            this.cmbLogSearchType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbLogSearchType.SelectedIndex = 0;
-            //
-            // btnLogSearch
-            //
-            this.btnLogSearch.Location = new System.Drawing.Point(330, 8);
-            this.btnLogSearch.Name = "btnLogSearch";
+            this.btnLogSearch.Location = new System.Drawing.Point(200, 8);
             this.btnLogSearch.Size = new System.Drawing.Size(70, 27);
             this.btnLogSearch.Text = "搜尋";
-            this.btnLogSearch.UseVisualStyleBackColor = true;
-            //
-            // btnRefreshLog
-            //
-            this.btnRefreshLog.Location = new System.Drawing.Point(410, 8);
-            this.btnRefreshLog.Name = "btnRefreshLog";
+            this.btnRefreshLog.Location = new System.Drawing.Point(280, 8);
             this.btnRefreshLog.Size = new System.Drawing.Size(90, 27);
             this.btnRefreshLog.Text = "刷新日誌";
-            this.btnRefreshLog.UseVisualStyleBackColor = true;
+            this.tabLog.Controls.Add(this.panelLogSearch);
             //
             // AdminForm
             //
@@ -574,15 +550,14 @@ namespace WinFormsApp1
         private System.Windows.Forms.Button btnComicPrev;
         private System.Windows.Forms.Button btnComicNext;
         private System.Windows.Forms.Label lblComicPage;
-        private System.Windows.Forms.Panel panelLogSearch;
-        private System.Windows.Forms.TextBox txtLogKeyword;
-        private System.Windows.Forms.ComboBox cmbLogSearchType;
-        private System.Windows.Forms.Button btnLogSearch;
-        private System.Windows.Forms.Button btnRefreshLog;
         // 管理日誌分頁控制
         private System.Windows.Forms.Panel panelLogPaging;
         private System.Windows.Forms.Button btnLogPrev;
         private System.Windows.Forms.Button btnLogNext;
         private System.Windows.Forms.Label lblLogPage;
+        private System.Windows.Forms.Panel panelLogSearch;
+        private System.Windows.Forms.TextBox txtLogKeyword;
+        private System.Windows.Forms.Button btnLogSearch;
+        private System.Windows.Forms.Button btnRefreshLog;
     }
 } 

@@ -226,7 +226,7 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show($"新增用戶成功！帳號：{username} (資料庫：{GetCurrentDatabaseName()})", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             await RefreshUserRecordsAsync();
-                            WriteLogEntry("新增用戶", $"用戶名={username}, 角色=user");
+                            WriteLogEntry("新增用戶", $"uid:{GetInsertedUserId(username)} 原用戶名:{username}被新增");
                             await RefreshLogRecordsAsync();
                         }
                         else
@@ -265,9 +265,15 @@ namespace WinFormsApp1
                 return;
             }
             int userId = int.Parse(dgvUser.CurrentRow.Cells["用戶ID"].Value.ToString());
+            string role = dgvUser.CurrentRow.Cells["角色"].Value.ToString();
             if (userId == currentUserId)
             {
                 MessageBox.Show("不能刪除自己！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            if (role == "admin")
+            {
+                MessageBox.Show("不能刪除管理員帳號！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             if (MessageBox.Show("確定要刪除此用戶？", "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
@@ -299,7 +305,7 @@ namespace WinFormsApp1
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        WriteLogEntry("刪除用戶", $"用戶名={deletedUserName}");
+                        WriteLogEntry("刪除用戶", $"uid:{userId} 原用戶名:{deletedUserName}被刪除");
                         await RefreshLogRecordsAsync();
                         AdminForm_Load(null, null);
                     }
@@ -415,7 +421,7 @@ namespace WinFormsApp1
             currentComicSearchKeyword = txtComicKeyword.Text.Trim();
             currentComicSearchType = cmbComicSearchType.SelectedItem?.ToString() ?? "書號";
             currentComicPage = 1;
-            await RefreshComicRecordsAsync();
+            await RefreshComicRecordsAsync(keyword: currentComicSearchKeyword, searchType: currentComicSearchType);
         }
 
         private async void btnBorrowSearch_Click(object sender, EventArgs e)
@@ -697,15 +703,16 @@ namespace WinFormsApp1
                     paramList.Add(new MySqlParameter("@keyword", "%" + currentBorrowSearchKeyword + "%"));
                 }
 
-                // 查詢總數（參照漫畫管理分頁邏輯，低侵入性修正）
-                string countSql = @"SELECT COUNT(*) FROM borrow_record b
-                    JOIN user u ON b.user_id = u.user_id
-                    JOIN comic c ON b.comic_id = c.comic_id
-                    WHERE 1=1";
-                var countParamList = new List<MySqlParameter>();
+                // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE
+                string countSql = @"SELECT COUNT(*)
+                                    FROM borrow_record b
+                                    JOIN user u ON b.user_id = u.user_id
+                                    JOIN comic c ON b.comic_id = c.comic_id
+                                    WHERE 1=1";
+                // 將搜尋條件也應用到計數 SQL
                 if (!string.IsNullOrWhiteSpace(currentBorrowSearchKeyword))
                 {
-                    string field = currentBorrowSearchType switch
+                     string field = currentBorrowSearchType switch
                     {
                         "用戶" => "u.username",
                         "書名" => "c.title",
@@ -713,10 +720,12 @@ namespace WinFormsApp1
                         _ => "u.username"
                     };
                     countSql += $" AND {field} LIKE @keyword";
-                    countParamList.Add(new MySqlParameter("@keyword", "%" + currentBorrowSearchKeyword + "%"));
+                    // 參數列表已經包含 @keyword，無需重複添加
                 }
-                long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, countParamList.ToArray()));
 
+                long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, paramList.ToArray()));
+
+                // 添加分頁參數到主查詢
                 sql += " ORDER BY b.borrow_date DESC LIMIT @offset, @pageSize";
                 paramList.Add(new MySqlParameter("@offset", (currentBorrowPage - 1) * PageSize));
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
@@ -728,12 +737,10 @@ namespace WinFormsApp1
                     dgvBorrow.DataSource = dt;
                     SetBorrowGridColumnWidths();
                     dgvBorrow.Refresh();
-                    // Debug 輸出
-                    System.Diagnostics.Debug.WriteLine($"BorrowPage: {currentBorrowPage}, PageSize: {PageSize}, totalRecords: {totalRecords}");
                     // 更新分頁控制項
                     lblBorrowPage.Text = $"第 {currentBorrowPage} 頁";
                     btnBorrowPrev.Enabled = currentBorrowPage > 1;
-                    btnBorrowNext.Enabled = (currentBorrowPage * PageSize) < totalRecords && totalRecords > PageSize;
+                    btnBorrowNext.Enabled = (currentBorrowPage * PageSize) < totalRecords;
                 });
             }
             catch (Exception ex)
@@ -750,13 +757,17 @@ namespace WinFormsApp1
                              r.reservation_date AS 預約日期, 
                              DATE_ADD(r.reservation_date, INTERVAL 1 DAY) AS 預約到期時間, 
                              CASE 
-                                 WHEN r.status = 'active' THEN '預約中'
+                                 -- 檢查是否有對應的借閱記錄（表示已完成預約）
+                                 WHEN br.borrow_id IS NOT NULL AND br.borrow_date >= r.reservation_date THEN '已完成'
+                                 WHEN r.status = 'active' AND r.reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN '預約中'
                                  WHEN r.status = 'canceled' THEN '已取消'
+                                 WHEN r.reservation_date <= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN '已過期'
                                  ELSE r.status -- 保留其他未知狀態
                              END AS 狀態
                              FROM reservation r
                              JOIN user u ON r.user_id = u.user_id
                              JOIN comic c ON r.comic_id = c.comic_id
+                             LEFT JOIN borrow_record br ON r.user_id = br.user_id AND r.comic_id = br.comic_id AND br.borrow_date >= r.reservation_date
                              WHERE 1=1";
                 var paramList = new List<MySqlParameter>();
 
@@ -773,15 +784,16 @@ namespace WinFormsApp1
                     paramList.Add(new MySqlParameter("@keyword", "%" + currentReserveSearchKeyword + "%"));
                 }
 
-                // 查詢總數（參照漫畫管理分頁邏輯，低侵入性修正）
-                string countSql = @"SELECT COUNT(*) FROM reservation r
-                    JOIN user u ON r.user_id = u.user_id
-                    JOIN comic c ON r.comic_id = c.comic_id
-                    WHERE 1=1";
-                var countParamList = new List<MySqlParameter>();
+                // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE
+                string countSql = @"SELECT COUNT(*)
+                                    FROM reservation r
+                                    JOIN user u ON r.user_id = u.user_id
+                                    JOIN comic c ON r.comic_id = c.comic_id
+                                    WHERE 1=1";
+                 // 將搜尋條件也應用到計數 SQL
                 if (!string.IsNullOrWhiteSpace(currentReserveSearchKeyword))
                 {
-                    string field = currentReserveSearchType switch
+                     string field = currentReserveSearchType switch
                     {
                         "用戶" => "u.username",
                         "書名" => "c.title",
@@ -789,10 +801,12 @@ namespace WinFormsApp1
                         _ => "u.username"
                     };
                     countSql += $" AND {field} LIKE @keyword";
-                    countParamList.Add(new MySqlParameter("@keyword", "%" + currentReserveSearchKeyword + "%"));
+                    // 參數列表已經包含 @keyword，無需重複添加
                 }
-                long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, countParamList.ToArray()));
 
+                long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, paramList.ToArray()));
+
+                // 添加分頁參數到主查詢
                 sql += " ORDER BY r.reservation_date DESC LIMIT @offset, @pageSize";
                 paramList.Add(new MySqlParameter("@offset", (currentReservePage - 1) * PageSize));
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
@@ -804,12 +818,10 @@ namespace WinFormsApp1
                     dgvReserve.DataSource = dt;
                     SetReserveGridColumnWidths();
                     dgvReserve.Refresh();
-                    // Debug 輸出
-                    System.Diagnostics.Debug.WriteLine($"ReservePage: {currentReservePage}, PageSize: {PageSize}, totalRecords: {totalRecords}");
                     // 更新分頁控制項
                     lblReservePage.Text = $"第 {currentReservePage} 頁";
                     btnReservePrev.Enabled = currentReservePage > 1;
-                    btnReserveNext.Enabled = (currentReservePage * PageSize) < totalRecords && totalRecords > PageSize;
+                    btnReserveNext.Enabled = (currentReservePage * PageSize) < totalRecords;
                 });
             }
             catch (Exception ex)
@@ -1249,16 +1261,16 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("用戶修改成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             await RefreshUserRecordsAsync();
-                            // 精簡中文日誌
+                            // 統一精簡中文日誌格式
                             List<string> changes = new List<string>();
                             if (oldUsername != editUserForm.Username)
-                                changes.Add($"用戶名 由 {oldUsername} 改為 {editUserForm.Username}");
+                                changes.Add($"用戶名:{oldUsername}被修改為{editUserForm.Username}");
                             if (oldStatus != editUserForm.Status)
-                                changes.Add($"狀態 由 {oldStatus} 改為 {editUserForm.Status}");
+                                changes.Add($"狀態:{oldStatus}被修改為{editUserForm.Status}");
                             if (!string.IsNullOrWhiteSpace(editUserForm.Password))
-                                changes.Add($"密碼已變更");
+                                changes.Add($"密碼被修改");
                             if (changes.Count > 0)
-                                WriteLogEntry("編輯用戶", string.Join(", ", changes));
+                                WriteLogEntry("編輯用戶", $"uid:{userId} 原" + string.Join("，", changes));
                             await RefreshLogRecordsAsync();
                         }
                         else
@@ -1278,42 +1290,21 @@ namespace WinFormsApp1
         private async void btnLogSearch_Click(object sender, EventArgs e)
         {
             string searchTerm = txtLogKeyword.Text.Trim();
-            string searchType = cmbLogSearchType.SelectedItem?.ToString() ?? "所有操作"; // 預設搜尋所有操作
-
-            await RefreshLogRecordsAsync(keyword: searchTerm, searchType: searchType);
+            await RefreshLogRecordsAsync(keyword: searchTerm);
         }
 
         // 刷新管理日誌
-        private async Task RefreshLogRecordsAsync(string keyword = null, string searchType = "所有操作")
+        private async Task RefreshLogRecordsAsync(string keyword = null)
         {
             try
             {
-                string sql = "SELECT action_timestamp AS 時間, u.username AS 管理員, action_type AS 操作類型, action_details AS 操作詳情 FROM admin_log al JOIN user u ON al.admin_user_id = u.user_id WHERE 1=1";
+                string sql = "SELECT action_timestamp AS 時間, u.username AS 管理員名稱, action_type AS 操作類型, action_details AS 操作詳情 FROM admin_log al JOIN user u ON al.admin_user_id = u.user_id WHERE 1=1";
                 var paramList = new List<MySqlParameter>();
 
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
-                     sql += " AND action_details LIKE @keyword";
-                     paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
-                }
-
-                if (searchType != "所有操作")
-                {
-                    // 將中文的操作類型轉換為數據庫中存儲的英文類型
-                    string dbActionType = searchType switch
-                    {
-                        "新增用戶" => "Add User",
-                        "編輯用戶" => "Edit User",
-                        "刪除用戶" => "Delete User",
-                        "新增漫畫" => "Add Comic",
-                        "編輯漫畫" => "Edit Comic",
-                        "刪除漫畫" => "Delete Comic",
-                        "歸還漫畫" => "Return Comic",
-                        "取消預約" => "Cancel Reservation",
-                        _ => searchType // 保留未知類型
-                    };
-                     sql += " AND action_type = @actionType";
-                     paramList.Add(new MySqlParameter("@actionType", dbActionType));
+                    sql += " AND (u.username LIKE @keyword OR action_type LIKE @keyword OR action_details LIKE @keyword)";
+                    paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
                 }
 
                 // 分頁查詢
@@ -1328,25 +1319,8 @@ namespace WinFormsApp1
                 var countParamList = new List<MySqlParameter>();
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
-                    countSql += " AND action_details LIKE @keyword";
+                    countSql += " AND (u.username LIKE @keyword OR action_type LIKE @keyword OR action_details LIKE @keyword)";
                     countParamList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
-                }
-                if (searchType != "所有操作")
-                {
-                    string dbActionType = searchType switch
-                    {
-                        "新增用戶" => "Add User",
-                        "編輯用戶" => "Edit User",
-                        "刪除用戶" => "Delete User",
-                        "新增漫畫" => "Add Comic",
-                        "編輯漫畫" => "Edit Comic",
-                        "刪除漫畫" => "Delete Comic",
-                        "歸還漫畫" => "Return Comic",
-                        "取消預約" => "Cancel Reservation",
-                        _ => searchType
-                    };
-                    countSql += " AND action_type = @actionType";
-                    countParamList.Add(new MySqlParameter("@actionType", dbActionType));
                 }
                 long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, countParamList.ToArray()));
 
@@ -1391,7 +1365,7 @@ namespace WinFormsApp1
         private void SetLogGridColumnWidths()
         {
              if (dgvLog.Columns.Contains("時間")) { dgvLog.Columns["時間"].Width = 150; }
-             if (dgvLog.Columns.Contains("管理員")) { dgvLog.Columns["管理員"].Width = 100; }
+             if (dgvLog.Columns.Contains("管理員名稱")) { dgvLog.Columns["管理員名稱"].Width = 100; }
              if (dgvLog.Columns.Contains("操作類型")) { dgvLog.Columns["操作類型"].Width = 120; }
              if (dgvLog.Columns.Contains("操作詳情")) { dgvLog.Columns["操作詳情"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; }
         }
@@ -1440,20 +1414,13 @@ namespace WinFormsApp1
             await RefreshLogRecordsAsync();
         }
 
-        // 新增方法：根據用戶ID獲取用戶角色
-        private string GetRoleById(int userId)
+        // 新增方法：根據用戶名查詢新插入的用戶ID
+        private int GetInsertedUserId(string username)
         {
-            try
-            {
-                string sql = "SELECT role FROM user WHERE user_id = @userId";
-                var param = new MySqlParameter("@userId", userId);
-                object result = DBHelper.ExecuteScalar(sql, new[] { param });
-                return result?.ToString() ?? "未知角色";
-            }
-            catch
-            {
-                return "未知角色";
-            }
+            string sql = "SELECT user_id FROM user WHERE username = @username ORDER BY user_id DESC LIMIT 1";
+            var param = new MySqlParameter("@username", username);
+            object result = DBHelper.ExecuteScalar(sql, new[] { param });
+            return result != null ? Convert.ToInt32(result) : 0;
         }
     }
 } 
