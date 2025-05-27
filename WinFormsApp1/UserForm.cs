@@ -205,35 +205,27 @@ namespace WinFormsApp1
                 if (!dt.Columns.Contains("借閱狀態")) dt.Columns.Add("借閱狀態", typeof(string));
                 if (!dt.Columns.Contains("預約狀態")) dt.Columns.Add("預約狀態", typeof(string));
 
-                // 一次查回所有未還借閱紀錄
-                var borrowStatusDict = new Dictionary<int, int>();
-                string borrowSql = "SELECT comic_id, user_id FROM borrow_record WHERE return_date IS NULL";
-                var borrowDt = DBHelper.ExecuteQuery(borrowSql);
+                // 優化：一次查所有未還借閱紀錄
+                var borrowDict = new Dictionary<int, int>();
+                var borrowDt = DBHelper.ExecuteQuery("SELECT comic_id, user_id FROM borrow_record WHERE return_date IS NULL");
                 foreach (DataRow row in borrowDt.Rows)
-                    borrowStatusDict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
+                    borrowDict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
+
+                // 優化：一次查所有24小時內預約紀錄
+                var reserveDict = new Dictionary<int, int>();
+                var reserveDt = DBHelper.ExecuteQuery("SELECT comic_id, user_id FROM reservation WHERE status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+                foreach (DataRow row in reserveDt.Rows)
+                    reserveDict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
 
                 foreach (DataRow row in dt.Rows)
                 {
                     int comicId = Convert.ToInt32(row["comic_id"]);
                     // 借閱狀態
-                    bool isBorrowed = borrowStatusDict.ContainsKey(comicId);
+                    bool isBorrowed = borrowDict.ContainsKey(comicId);
                     row["借閱狀態"] = isBorrowed ? "已被借" : "未被借";
-                    // 預約狀態（與右側一致）
-                    string sqlReserve = "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-                    var reserve = DBHelper.ExecuteQuery(sqlReserve, new MySql.Data.MySqlClient.MySqlParameter[] { new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId) });
-                    string reserveStatus;
-                    if (isBorrowed)
-                    {
-                        reserveStatus = "不可預約";  // 書被借出時，任何人都不能預約
-                    }
-                    else if (reserve.Rows.Count > 0)
-                    {
-                        reserveStatus = "已被預約";  // 書未被借出，但有人預約
-                    }
-                    else
-                    {
-                        reserveStatus = "可預約";    // 書未被借出，也無人預約
-                    }
+                    // 預約狀態
+                    string reserveStatus = isBorrowed ? "不可預約" :
+                        reserveDict.ContainsKey(comicId) ? "已被預約" : "可預約";
                     row["預約狀態"] = reserveStatus;
                 }
                 dgvComics.DataSource = dt;
@@ -310,30 +302,28 @@ namespace WinFormsApp1
                 var dt = DBHelper.ExecuteQuery(sql, paramList.ToArray());
                 if (!dt.Columns.Contains("借閱狀態")) dt.Columns.Add("借閱狀態", typeof(string));
                 if (!dt.Columns.Contains("預約狀態")) dt.Columns.Add("預約狀態", typeof(string));
+
+                // 優化：一次查所有未還借閱紀錄
+                var borrowDict = new Dictionary<int, int>();
+                var borrowDt = DBHelper.ExecuteQuery("SELECT comic_id, user_id FROM borrow_record WHERE return_date IS NULL");
+                foreach (DataRow row in borrowDt.Rows)
+                    borrowDict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
+
+                // 優化：一次查所有24小時內預約紀錄
+                var reserveDict = new Dictionary<int, int>();
+                var reserveDt = DBHelper.ExecuteQuery("SELECT comic_id, user_id FROM reservation WHERE status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+                foreach (DataRow row in reserveDt.Rows)
+                    reserveDict[Convert.ToInt32(row["comic_id"])] = Convert.ToInt32(row["user_id"]);
+
                 foreach (DataRow row in dt.Rows)
                 {
                     int comicId = Convert.ToInt32(row["comic_id"]);
                     // 借閱狀態
-                    string sqlBorrow = "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL";
-                    var borrow = DBHelper.ExecuteQuery(sqlBorrow, new MySql.Data.MySqlClient.MySqlParameter[] { new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId) });
-                    string borrowStatus = (borrow.Rows.Count > 0) ? "已被借" : "未被借";
-                    row["借閱狀態"] = borrowStatus;
-                    // 預約狀態（與右側一致）
-                    string sqlReserve = "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-                    var reserve = DBHelper.ExecuteQuery(sqlReserve, new MySql.Data.MySqlClient.MySqlParameter[] { new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId) });
-                    string reserveStatus;
-                    if (borrow.Rows.Count > 0)
-                    {
-                        reserveStatus = "不可預約";  // 書被借出時，任何人都不能預約
-                    }
-                    else if (reserve.Rows.Count > 0)
-                    {
-                        reserveStatus = "已被預約";  // 書未被借出，但有人預約
-                    }
-                    else
-                    {
-                        reserveStatus = "可預約";    // 書未被借出，也無人預約
-                    }
+                    bool isBorrowed = borrowDict.ContainsKey(comicId);
+                    row["借閱狀態"] = isBorrowed ? "已被借" : "未被借";
+                    // 預約狀態
+                    string reserveStatus = isBorrowed ? "不可預約" :
+                        reserveDict.ContainsKey(comicId) ? "已被預約" : "可預約";
                     row["預約狀態"] = reserveStatus;
                 }
                 dgvComics.DataSource = dt;
@@ -1366,10 +1356,14 @@ LEFT JOIN (
             cmbSearchType.SelectedIndex = 0;
             var btnSearch = new Button { Name = "btnSearch", Text = "搜尋", Location = new System.Drawing.Point(350, 6), Size = new System.Drawing.Size(60, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
             btnSearch.Click += async (s, e) => await RefreshUserComicsGrid(txtSearch.Text, cmbSearchType.SelectedItem?.ToString());
+            // 新增刷新按鈕
+            var btnRefresh = new Button { Name = "btnHomeRefresh", Text = "刷新", Location = new System.Drawing.Point(420, 6), Size = new System.Drawing.Size(60, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            btnRefresh.Click += async (s, e) => await RefreshUserComicsGrid(txtSearch.Text, cmbSearchType.SelectedItem?.ToString());
             panelSearch.Controls.Add(labelSearch);
             panelSearch.Controls.Add(txtSearch);
             panelSearch.Controls.Add(cmbSearchType);
             panelSearch.Controls.Add(btnSearch);
+            panelSearch.Controls.Add(btnRefresh);
             // 主表 DataGridView（Dock=Fill）
             dgvUserComics = new DataGridView
             {
@@ -1616,21 +1610,23 @@ LEFT JOIN (
 
         private void SetUserComicsGridColumnSettings()
         {
-            if (dgvUserComics == null || dgvUserComics.Columns.Count == 0) return; // 檢查 DataGridView 和 Columns 是否存在
+            if (dgvUserComics == null || dgvUserComics.Columns.Count == 0) return;
+
             // Define desired order and width for all potential columns
             var columnSettings = new List<(string Name, string Header, int Width)>()
             {
-                ("書號", "書號", 60),
+                ("書號", "編號", 60), // 將顯示標題「書號」改為「編號」
                 ("ISBN", "ISBN", 80),
                 ("書名", "書名", 200),
                 ("作者", "作者", 80),
                 ("出版社", "出版社", 100),
                 ("分類", "分類", 100),
-                ("借閱狀態", "借閱狀態", 90),  // 減少寬度從 120 到 90
-                ("預約狀態", "預約狀態", 90),  // 減少寬度從 120 到 90
-                ("借書", "借書", 80),         // 增加寬度從 60 到 80
-                ("預約", "預約", 80)          // 增加寬度從 60 到 80
+                ("借閱狀態", "借閱狀態", 90),
+                ("預約狀態", "預約狀態", 90),
+                ("借書", "借書", 80),
+                ("預約", "預約", 80)
             };
+
             // Add button columns if they don't exist yet
             if (dgvUserComics.Columns["借書"] == null)
             {
@@ -2062,84 +2058,84 @@ LEFT JOIN (
             try
             {
                 // 檢查借書冷卻期並顯示詳細時間提示
-                string sqlLastReturn = "SELECT return_date FROM borrow_record WHERE user_id = @uid AND comic_id = @cid AND return_date IS NOT NULL ORDER BY return_date DESC LIMIT 1";
-                var dtReturn = DBHelper.ExecuteQuery(sqlLastReturn, new MySql.Data.MySqlClient.MySqlParameter[] {
-                    new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
-                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                });
-
+                var dtReturn = await Task.Run(() => DBHelper.ExecuteQuery(
+                    "SELECT return_date FROM borrow_record WHERE user_id = @uid AND comic_id = @cid AND return_date IS NOT NULL ORDER BY return_date DESC LIMIT 1",
+                    new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    }
+                ));
                 if (dtReturn.Rows.Count > 0)
                 {
                     DateTime lastReturnTime = Convert.ToDateTime(dtReturn.Rows[0]["return_date"]);
                     TimeSpan elapsed = DateTime.Now - lastReturnTime;
                     TimeSpan coolingDuration = TimeSpan.FromHours(24);
                     TimeSpan remainingTime = coolingDuration - elapsed;
-
                     if (remainingTime.TotalSeconds > 0)
                     {
                         string timeMessage = $"您仍在借閱冷卻期內，還需等待 {remainingTime.Hours} 小時 {remainingTime.Minutes} 分 {remainingTime.Seconds} 秒。";
                         MessageBox.Show(timeMessage, "借閱失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return; // 顯示提示後終止操作
+                        return;
                     }
                 }
-
-                // 先查詢最新狀態
-                string sqlBorrow = "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL";
-                var dtBorrow = DBHelper.ExecuteQuery(sqlBorrow, new MySql.Data.MySqlClient.MySqlParameter[] {
-                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                });
+                var dtBorrow = await Task.Run(() => DBHelper.ExecuteQuery(
+                    "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL",
+                    new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    }
+                ));
                 bool isBorrowed = dtBorrow.Rows.Count > 0;
                 int borrowedUserId = isBorrowed ? Convert.ToInt32(dtBorrow.Rows[0]["user_id"]) : -1;
-
                 if (isBorrowed && borrowedUserId == loggedInUserId)
                 {
-                    // 還書
-                    string sqlReturn = "UPDATE borrow_record SET return_date = NOW() WHERE comic_id = @cid AND user_id = @uid AND return_date IS NULL";
-                    int rowsAffected = DBHelper.ExecuteNonQuery(sqlReturn, new MySql.Data.MySqlClient.MySqlParameter[] {
-                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
-                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
-                    });
+                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(
+                        "UPDATE borrow_record SET return_date = NOW() WHERE comic_id = @cid AND user_id = @uid AND return_date IS NULL",
+                        new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
+                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+                        }
+                    ));
                     if (rowsAffected > 0)
                     {
                         MessageBox.Show("還書成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                         // 刷新相關列表已在 DgvUserComics_CellContentClick 或調用處處理
                     }
                 }
                 else if (!isBorrowed)
                 {
-                    // 檢查預約
-                    string sqlReserve = "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-                    var dtReserve = DBHelper.ExecuteQuery(sqlReserve, new MySql.Data.MySqlClient.MySqlParameter[] {
-                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                    });
+                    var dtReserve = await Task.Run(() => DBHelper.ExecuteQuery(
+                        "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+                        new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                        }
+                    ));
                     int reservedUserId = dtReserve.Rows.Count > 0 ? Convert.ToInt32(dtReserve.Rows[0]["user_id"]) : -1;
-
                     if (dtReserve.Rows.Count > 0 && reservedUserId != loggedInUserId)
                     {
                         MessageBox.Show("此書已被預約，只有預約者才能借閱。", "借閱失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return; // 終止操作
+                        return;
                     }
                     if (IsUserInCoolingPeriod(loggedInUserId, comicId))
                     {
                         MessageBox.Show("您仍在冷卻期內，無法借閱此書。", "借閱失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return; // 終止操作
+                        return;
                     }
-                    // 借書
-                    string sqlBorrowInsert = "INSERT INTO borrow_record (user_id, comic_id, borrow_date) VALUES (@uid, @cid, NOW())";
-                    int rowsAffected = DBHelper.ExecuteNonQuery(sqlBorrowInsert, new MySql.Data.MySqlClient.MySqlParameter[] {
-                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
-                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                    });
+                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(
+                        "INSERT INTO borrow_record (user_id, comic_id, borrow_date) VALUES (@uid, @cid, NOW())",
+                        new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                        }
+                    ));
                     if (rowsAffected > 0)
                     {
-                        // 自動取消自己預約（只取消24小時內的預約）
-                        string sqlCancelReserve = "UPDATE reservation SET status = 'canceled' WHERE comic_id = @cid AND user_id = @uid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-                        DBHelper.ExecuteNonQuery(sqlCancelReserve, new MySql.Data.MySqlClient.MySqlParameter[] {
-                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
-                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
-                        });
+                        await Task.Run(() => DBHelper.ExecuteNonQuery(
+                            "UPDATE reservation SET status = 'canceled' WHERE comic_id = @cid AND user_id = @uid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+                            new MySql.Data.MySqlClient.MySqlParameter[] {
+                                new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
+                                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+                            }
+                        ));
                         MessageBox.Show("借書成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                         // 刷新相關列表已在 DgvUserComics_CellContentClick 或調用處處理
                     }
                 }
                 else
@@ -2159,7 +2155,6 @@ LEFT JOIN (
         {
             try
             {
-                // 查詢預約狀態 (同步呼叫，因為需要即時判斷是新增還是取消預約)
                 var activeReservation = await Task.Run(() => {
                     string sqlReserve = "SELECT user_id, reservation_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
                     var dtReserve = DBHelper.ExecuteQuery(sqlReserve, new MySql.Data.MySqlClient.MySqlParameter[] {
@@ -2167,17 +2162,15 @@ LEFT JOIN (
                     });
                     return dtReserve.Rows.Count > 0 ? new { UserId = Convert.ToInt32(dtReserve.Rows[0]["user_id"]), ReservationId = Convert.ToInt32(dtReserve.Rows[0]["reservation_id"]) } : null;
                 });
-
-                // 檢查是否是當前用戶自己的活躍預約 (表示嘗試取消預約)
                 if (activeReservation != null && activeReservation.UserId == loggedInUserId)
                 {
-                    // 執行取消預約邏輯（不檢查冷卻期）
-                    string sqlCancel = "UPDATE reservation SET status = 'canceled' WHERE reservation_id = @rid AND user_id = @uid AND status = 'active'";
-                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(sqlCancel, new MySql.Data.MySqlClient.MySqlParameter[] {
-                        new MySql.Data.MySqlClient.MySqlParameter("@rid", activeReservation.ReservationId),
-                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
-                    }));
-
+                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(
+                        "UPDATE reservation SET status = 'canceled' WHERE reservation_id = @rid AND user_id = @uid AND status = 'active'",
+                        new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@rid", activeReservation.ReservationId),
+                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+                        }
+                    ));
                     if (rowsAffected > 0)
                     {
                         MessageBox.Show("取消預約成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -2186,59 +2179,50 @@ LEFT JOIN (
                     {
                         MessageBox.Show("取消預約失敗。", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
-                    return; // 取消預約後終止操作
+                    return;
                 }
-                // 檢查是否有其他用戶的活躍預約
                 else if (activeReservation != null)
                 {
                     MessageBox.Show("此書已被預約，無法再次預約。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return; // 終止操作
+                    return;
                 }
-
-                // === 只有在新增預約時才檢查冷卻期 ===
-                // 首先檢查借書冷卻期，避免預約連續霸佔
                 if (IsUserInCoolingPeriod(loggedInUserId, comicId))
                 {
                     MessageBox.Show("您剛歸還此書，正在借閱冷卻期內，暫時無法預約。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return; // 終止操作
+                    return;
                 }
-
-                // 檢查借書冷卻期並顯示詳細時間提示
-                string sqlLastReturn = "SELECT return_date FROM borrow_record WHERE user_id = @uid AND comic_id = @cid AND return_date IS NOT NULL ORDER BY return_date DESC LIMIT 1";
-                var dtReturn = DBHelper.ExecuteQuery(sqlLastReturn, new MySql.Data.MySqlClient.MySqlParameter[] {
-                    new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
-                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                });
-
+                var dtReturn = await Task.Run(() => DBHelper.ExecuteQuery(
+                    "SELECT return_date FROM borrow_record WHERE user_id = @uid AND comic_id = @cid AND return_date IS NOT NULL ORDER BY return_date DESC LIMIT 1",
+                    new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    }
+                ));
                 if (dtReturn.Rows.Count > 0)
                 {
                     DateTime lastReturnTime = Convert.ToDateTime(dtReturn.Rows[0]["return_date"]);
                     TimeSpan elapsed = DateTime.Now - lastReturnTime;
                     TimeSpan coolingDuration = TimeSpan.FromHours(24);
                     TimeSpan remainingTime = coolingDuration - elapsed;
-
                     if (remainingTime.TotalSeconds > 0)
                     {
                         string timeMessage = $"您剛歸還此書，正在借閱冷卻期內，還需等待 {remainingTime.Hours} 小時 {remainingTime.Minutes} 分 {remainingTime.Seconds} 秒。";
                         MessageBox.Show(timeMessage, "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return; // 顯示提示後終止操作
+                        return;
                     }
                 }
-
-                // 查詢最新借閱狀態 (同步呼叫，因為需要即時判斷是否可預約)
-                string sqlBorrow = "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL";
-                var dtBorrow = DBHelper.ExecuteQuery(sqlBorrow, new MySql.Data.MySqlClient.MySqlParameter[] {
-                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                });
+                var dtBorrow = await Task.Run(() => DBHelper.ExecuteQuery(
+                    "SELECT user_id FROM borrow_record WHERE comic_id = @cid AND return_date IS NULL",
+                    new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    }
+                ));
                 bool isBorrowed = dtBorrow.Rows.Count > 0;
-
                 if (isBorrowed)
                 {
                     MessageBox.Show("此書已被借出，無法預約。", "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return; // 終止操作
+                    return;
                 }
-
-                // 檢查預約冷卻期 (只在嘗試新增預約時檢查)
                 string sqlCooling = @"SELECT reservation_date 
                             FROM reservation 
                             WHERE user_id = @uid 
@@ -2246,11 +2230,10 @@ LEFT JOIN (
                             AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR) 
                             ORDER BY reservation_date DESC 
                             LIMIT 1";
-                var dtCooling = DBHelper.ExecuteQuery(sqlCooling, new MySql.Data.MySqlClient.MySqlParameter[] {
+                var dtCooling = await Task.Run(() => DBHelper.ExecuteQuery(sqlCooling, new MySql.Data.MySqlClient.MySqlParameter[] {
                     new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
                     new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                });
-
+                }));
                 if (dtCooling.Rows.Count > 0)
                 {
                     DateTime lastReserveTime = Convert.ToDateTime(dtCooling.Rows[0]["reservation_date"]);
@@ -2260,18 +2243,16 @@ LEFT JOIN (
                     {
                         string timeMessage = $"您仍在預約冷卻期內，還需等待 {remainingTime.Hours} 小時 {remainingTime.Minutes} 分 {remainingTime.Seconds} 秒。";
                         MessageBox.Show(timeMessage, "預約失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return; // 顯示提示後終止操作
+                        return;
                     }
                 }
-
-                // 新增預約 (只有在沒有被借出、沒有其他用戶活躍預約、且不在冷卻期時執行)
-                string sqlInsert = "INSERT INTO reservation (user_id, comic_id, reservation_date, status) VALUES (@uid, @cid, NOW(), 'active')";
-                int insertRowsAffected = await Task.Run(() => {
-                    return DBHelper.ExecuteNonQuery(sqlInsert, new MySql.Data.MySqlClient.MySqlParameter[] {
+                int insertRowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(
+                    "INSERT INTO reservation (user_id, comic_id, reservation_date, status) VALUES (@uid, @cid, NOW(), 'active')",
+                    new MySql.Data.MySqlClient.MySqlParameter[] {
                         new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
                         new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                    });
-                });
+                    }
+                ));
                 if (insertRowsAffected > 0)
                 {
                     MessageBox.Show("預約成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
