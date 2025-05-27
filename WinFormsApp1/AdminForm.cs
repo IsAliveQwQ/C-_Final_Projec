@@ -85,6 +85,7 @@ namespace WinFormsApp1
 
             // 用戶管理事件
             this.btnAddUser.Click += new EventHandler(this.btnAddUser_Click);
+            this.btnEditUser.Click += new EventHandler(this.btnEditUser_Click);
             this.btnDeleteUser.Click += new EventHandler(this.btnDeleteUser_Click);
             this.btnUserSearch.Click += new EventHandler(this.btnUserSearch_Click);
             this.btnRefreshUser.Click += async (s, e) => await RefreshUserRecordsAsync();
@@ -298,12 +299,15 @@ namespace WinFormsApp1
         {
             try
             {
-                string sql = @"SELECT user_id AS 用戶ID, username AS 用戶名, role AS 角色 
-                             FROM user 
-                             WHERE 1=1";
+                currentUserPage = page; // 更新當前頁碼
+
+                string sql = "SELECT user_id AS 用戶ID, username AS 用戶名, role AS 角色, " +
+                           "CASE WHEN status = 'active' THEN '正常' " +
+                           "WHEN status = 'frozen' THEN '凍結' " +
+                           "ELSE status END AS 狀態 " +
+                           "FROM user WHERE 1=1";
                 var paramList = new List<MySqlParameter>();
 
-                // 根據搜尋類型構建 WHERE 子句
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
                     if (searchType == "用戶ID")
@@ -778,15 +782,20 @@ namespace WinFormsApp1
                 dgvUser.Columns["角色"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvUser.Columns["角色"].DisplayIndex = 2;
             }
+            if (dgvUser.Columns.Contains("狀態")) {
+                dgvUser.Columns["狀態"].Width = 80;
+                dgvUser.Columns["狀態"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                dgvUser.Columns["狀態"].DisplayIndex = 3;
+            }
             if (dgvUser.Columns.Contains("查看借閱紀錄")) {
                 dgvUser.Columns["查看借閱紀錄"].Width = 110;
                 dgvUser.Columns["查看借閱紀錄"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                dgvUser.Columns["查看借閱紀錄"].DisplayIndex = 3;
+                dgvUser.Columns["查看借閱紀錄"].DisplayIndex = 4;
             }
             if (dgvUser.Columns.Contains("查看預約紀錄")) {
                 dgvUser.Columns["查看預約紀錄"].Width = 110;
                 dgvUser.Columns["查看預約紀錄"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                dgvUser.Columns["查看預約紀錄"].DisplayIndex = 4;
+                dgvUser.Columns["查看預約紀錄"].DisplayIndex = 5;
             }
         }
         private void SetBorrowGridColumnWidths()
@@ -1025,6 +1034,62 @@ namespace WinFormsApp1
             catch (Exception ex)
             {
                 MessageBox.Show($"刷新漫畫資料時發生錯誤：{ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // 編輯用戶按鈕點擊事件
+        private void btnEditUser_Click(object sender, EventArgs e)
+        {
+            if (dgvUser.CurrentRow == null)
+            {
+                MessageBox.Show("請先選擇要編輯的用戶！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int userId = int.Parse(dgvUser.CurrentRow.Cells["用戶ID"].Value.ToString());
+            string username = dgvUser.CurrentRow.Cells["用戶名"].Value.ToString();
+            string status = dgvUser.CurrentRow.Cells["狀態"].Value.ToString() == "正常" ? "active" : "frozen";
+
+            using (EditUserForm editUserForm = new EditUserForm(userId, username, status))
+            {
+                if (editUserForm.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        string sql = "UPDATE user SET username = @username, status = @status";
+                        var paramList = new List<MySqlParameter>
+                        {
+                            new MySqlParameter("@username", editUserForm.Username),
+                            new MySqlParameter("@status", editUserForm.Status)
+                        };
+
+                        // 如果密碼不為空，則更新密碼
+                        if (!string.IsNullOrWhiteSpace(editUserForm.Password))
+                        {
+                            sql += ", password_hash = @password";
+                            paramList.Add(new MySqlParameter("@password", editUserForm.Password));
+                        }
+
+                        sql += " WHERE user_id = @userId";
+                        paramList.Add(new MySqlParameter("@userId", userId));
+
+                        int rowsAffected = DBHelper.ExecuteNonQuery(sql, paramList.ToArray());
+
+                        if (rowsAffected > 0)
+                        {
+                            MessageBox.Show("用戶修改成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            RefreshUserRecordsAsync();
+                        }
+                        else
+                        {
+                            MessageBox.Show("用戶修改失敗，請稍後再試。", "失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("修改用戶時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
             }
         }
     }
