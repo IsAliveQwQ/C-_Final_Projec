@@ -24,7 +24,7 @@ namespace WinFormsApp1
             // 初始化控件
             txtUsername.Text = username;
             cmbStatus.Items.AddRange(new string[] { "正常", "凍結" });
-            cmbStatus.SelectedItem = status == "active" ? "正常" : "凍結";
+            cmbStatus.SelectedItem = status == "正常" ? "正常" : "凍結";
 
             // 設置字體
             this.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
@@ -48,7 +48,7 @@ namespace WinFormsApp1
 
             Username = txtUsername.Text;
             Password = txtPassword.Text;
-            Status = cmbStatus.SelectedItem.ToString() == "正常" ? "active" : "frozen";
+            Status = cmbStatus.SelectedItem.ToString();
 
             DialogResult = DialogResult.OK;
             Close();

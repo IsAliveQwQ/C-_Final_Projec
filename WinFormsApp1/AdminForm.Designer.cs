@@ -79,9 +79,13 @@ namespace WinFormsApp1
             this.btnBorrowPrev.Text = "上一頁";
             this.btnBorrowNext.Text = "下一頁";
             this.lblBorrowPage.Text = "第 1 頁";
-            this.btnBorrowPrev.Location = new System.Drawing.Point(20, 8);
-            this.btnBorrowNext.Location = new System.Drawing.Point(200, 8);
+            this.btnBorrowPrev.Location = new System.Drawing.Point(10, 6);
             this.lblBorrowPage.Location = new System.Drawing.Point(100, 10);
+            this.btnBorrowNext.Location = new System.Drawing.Point(210, 6);
+            this.btnBorrowPrev.Size = new System.Drawing.Size(80, 27);
+            this.btnBorrowNext.Size = new System.Drawing.Size(80, 27);
+            this.lblBorrowPage.Size = new System.Drawing.Size(100, 20);
+            this.lblBorrowPage.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.panelBorrowPaging.Controls.Add(this.btnBorrowPrev);
             this.panelBorrowPaging.Controls.Add(this.lblBorrowPage);
             this.panelBorrowPaging.Controls.Add(this.btnBorrowNext);
@@ -97,9 +101,13 @@ namespace WinFormsApp1
             this.btnReservePrev.Text = "上一頁";
             this.btnReserveNext.Text = "下一頁";
             this.lblReservePage.Text = "第 1 頁";
-            this.btnReservePrev.Location = new System.Drawing.Point(20, 8);
-            this.btnReserveNext.Location = new System.Drawing.Point(200, 8);
+            this.btnReservePrev.Location = new System.Drawing.Point(10, 6);
             this.lblReservePage.Location = new System.Drawing.Point(100, 10);
+            this.btnReserveNext.Location = new System.Drawing.Point(210, 6);
+            this.btnReservePrev.Size = new System.Drawing.Size(80, 27);
+            this.btnReserveNext.Size = new System.Drawing.Size(80, 27);
+            this.lblReservePage.Size = new System.Drawing.Size(100, 20);
+            this.lblReservePage.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.panelReservePaging.Controls.Add(this.btnReservePrev);
             this.panelReservePaging.Controls.Add(this.lblReservePage);
             this.panelReservePaging.Controls.Add(this.btnReserveNext);
@@ -132,9 +140,13 @@ namespace WinFormsApp1
             this.btnUserPrev.Text = "上一頁";
             this.btnUserNext.Text = "下一頁";
             this.lblUserPage.Text = "第 1 頁";
-            this.btnUserPrev.Location = new System.Drawing.Point(20, 8);
-            this.btnUserNext.Location = new System.Drawing.Point(200, 8);
+            this.btnUserPrev.Location = new System.Drawing.Point(10, 6);
             this.lblUserPage.Location = new System.Drawing.Point(100, 10);
+            this.btnUserNext.Location = new System.Drawing.Point(210, 6);
+            this.btnUserPrev.Size = new System.Drawing.Size(80, 27);
+            this.btnUserNext.Size = new System.Drawing.Size(80, 27);
+            this.lblUserPage.Size = new System.Drawing.Size(100, 20);
+            this.lblUserPage.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.panelUserPaging.Controls.Add(this.btnUserPrev);
             this.panelUserPaging.Controls.Add(this.lblUserPage);
             this.panelUserPaging.Controls.Add(this.btnUserNext);
@@ -156,9 +168,13 @@ namespace WinFormsApp1
             this.btnComicPrev.Text = "上一頁";
             this.btnComicNext.Text = "下一頁";
             this.lblComicPage.Text = "第 1 頁";
-            this.btnComicPrev.Location = new System.Drawing.Point(20, 8);
-            this.btnComicNext.Location = new System.Drawing.Point(200, 8);
+            this.btnComicPrev.Location = new System.Drawing.Point(10, 6);
             this.lblComicPage.Location = new System.Drawing.Point(100, 10);
+            this.btnComicNext.Location = new System.Drawing.Point(210, 6);
+            this.btnComicPrev.Size = new System.Drawing.Size(80, 27);
+            this.btnComicNext.Size = new System.Drawing.Size(80, 27);
+            this.lblComicPage.Size = new System.Drawing.Size(100, 20);
+            this.lblComicPage.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.panelComicPaging.Controls.Add(this.btnComicPrev);
             this.panelComicPaging.Controls.Add(this.lblComicPage);
             this.panelComicPaging.Controls.Add(this.btnComicNext);
@@ -171,16 +187,16 @@ namespace WinFormsApp1
             // tabBorrow
             //
             this.tabBorrow.Text = "借閱紀錄查詢";
-            this.tabBorrow.Controls.Clear();
             this.tabBorrow.Controls.Add(this.dgvBorrow);
             this.tabBorrow.Controls.Add(this.panelBorrowSearch);
+            this.tabBorrow.Controls.Add(this.panelBorrowPaging);
             //
             // tabReserve
             //
             this.tabReserve.Text = "預約紀錄查詢";
-            this.tabReserve.Controls.Clear();
             this.tabReserve.Controls.Add(this.dgvReserve);
             this.tabReserve.Controls.Add(this.panelReserveSearch);
+            this.tabReserve.Controls.Add(this.panelReservePaging);
             //
             // tabLog
             //
@@ -188,6 +204,27 @@ namespace WinFormsApp1
             this.tabLog.Controls.Clear();
             this.tabLog.Controls.Add(this.dgvLog);
             this.tabLog.Controls.Add(this.panelLogSearch);
+            // 管理日誌分頁控制
+            this.panelLogPaging = new System.Windows.Forms.Panel();
+            this.btnLogPrev = new System.Windows.Forms.Button();
+            this.btnLogNext = new System.Windows.Forms.Button();
+            this.lblLogPage = new System.Windows.Forms.Label();
+            this.panelLogPaging.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.panelLogPaging.Height = 40;
+            this.btnLogPrev.Text = "上一頁";
+            this.btnLogNext.Text = "下一頁";
+            this.lblLogPage.Text = "第 1 頁";
+            this.btnLogPrev.Location = new System.Drawing.Point(10, 6);
+            this.lblLogPage.Location = new System.Drawing.Point(100, 10);
+            this.btnLogNext.Location = new System.Drawing.Point(210, 6);
+            this.btnLogPrev.Size = new System.Drawing.Size(80, 27);
+            this.btnLogNext.Size = new System.Drawing.Size(80, 27);
+            this.lblLogPage.Size = new System.Drawing.Size(100, 20);
+            this.lblLogPage.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.panelLogPaging.Controls.Add(this.btnLogPrev);
+            this.panelLogPaging.Controls.Add(this.lblLogPage);
+            this.panelLogPaging.Controls.Add(this.btnLogNext);
+            this.tabLog.Controls.Add(this.panelLogPaging);
             //
             // dgvUser
             //
@@ -542,5 +579,10 @@ namespace WinFormsApp1
         private System.Windows.Forms.ComboBox cmbLogSearchType;
         private System.Windows.Forms.Button btnLogSearch;
         private System.Windows.Forms.Button btnRefreshLog;
+        // 管理日誌分頁控制
+        private System.Windows.Forms.Panel panelLogPaging;
+        private System.Windows.Forms.Button btnLogPrev;
+        private System.Windows.Forms.Button btnLogNext;
+        private System.Windows.Forms.Label lblLogPage;
     }
 } 
