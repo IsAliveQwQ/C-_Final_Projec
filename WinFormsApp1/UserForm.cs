@@ -17,6 +17,11 @@ namespace WinFormsApp1
         private int currentBorrowPage = 1;
         private int currentReservePage = 1;
         private const int PageSize = 10; // 每頁顯示 10 筆資料
+        private int currentComicPage = 1;  // 新增：首頁漫畫列表當前頁碼
+        private const int ComicPageSize = 10;  // 新增：首頁每頁顯示筆數
+        private Button btnComicPrev;  // 新增：首頁上一頁按鈕
+        private Button btnComicNext;  // 新增：首頁下一頁按鈕
+        private Label lblComicPage;  // 新增：首頁分頁標籤
 
         // 新增首頁漫畫主表 DataGridView
         private DataGridView dgvUserComics;
@@ -26,6 +31,13 @@ namespace WinFormsApp1
         private System.Windows.Forms.TabPage tabPageHome;
         private System.Windows.Forms.TabPage tabPageBorrow;
         private System.Windows.Forms.TabPage tabPageReserve;
+
+        // 添加緩存相關字段
+        private DataTable cachedBorrowRecords = null;
+        private DataTable cachedReserveRecords = null;
+        private DateTime lastBorrowRefresh = DateTime.MinValue;
+        private DateTime lastReserveRefresh = DateTime.MinValue;
+        private const int CACHE_DURATION_SECONDS = 30; // 緩存有效期30秒
 
         // 使用者介面表單的建構子 (接收使用者 ID 和角色)
         public UserForm(int userId, string userRole)
@@ -905,6 +917,10 @@ namespace WinFormsApp1
                     return DBHelper.ExecuteQuery(sql, paramList.ToArray());
                 });
 
+                // 更新緩存
+                cachedBorrowRecords = dt;
+                lastBorrowRefresh = DateTime.Now;
+
                 // 在 UI 線程上更新 DataGridView
                 await this.InvokeAsync(() => {
                     // 暫停佈局以提高性能
@@ -914,7 +930,7 @@ namespace WinFormsApp1
                     dgvBorrowRecord.DataSource = dt;
                     
                     // 確保在數據綁定後立即設定欄位屬性和按鈕狀態
-                    SetBorrowGridSettingsAndButtonStatus(); // 新增此行，確保設置執行
+                    SetBorrowGridSettingsAndButtonStatus();
 
                     // 更新分頁標籤和按鈕狀態
                     lblBorrowPage.Text = $"第 {currentBorrowPage} 頁";
@@ -1045,38 +1061,54 @@ namespace WinFormsApp1
 
                 sql += " ORDER BY r.reservation_date DESC LIMIT @offset, @pageSize";
                 paramList.Add(new MySqlParameter("@offset", (currentReservePage - 1) * PageSize));
-                paramList.Add(new MySql.Data.MySqlClient.MySqlParameter("@pageSize", PageSize));
+                paramList.Add(new MySqlParameter("@pageSize", PageSize));
 
                 // 在後台執行數據查詢
                 DataTable dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
 
+                // 更新緩存
+                cachedReserveRecords = dt;
+                lastReserveRefresh = DateTime.Now;
+
                 // 在 UI 線程上更新 DataGridView
-                this.Invoke((MethodInvoker)delegate {
+                await this.InvokeAsync(() => {
+                    // 暫停佈局以提高性能
+                    dgvReserveRecord.SuspendLayout();
+                    
                     dgvReserveRecord.DataSource = dt;
-                    SetReserveGridSettingsAndButtonStatus(); // 直接在此呼叫設定方法
+                    SetReserveGridSettingsAndButtonStatus();
+                    
+                    // 更新分頁標籤和按鈕狀態
+                    lblReservePage.Text = $"第 {currentReservePage} 頁";
+                    btnReservePrev.Enabled = currentReservePage > 1;
+                    
+                    // 恢復佈局
+                    dgvReserveRecord.ResumeLayout();
                 });
 
-                // 更新分頁標籤和按鈕狀態
-                lblReservePage.Text = $"第 {currentReservePage} 頁";
-                btnReservePrev.Enabled = currentReservePage > 1;
-                string countSql = @"SELECT COUNT(*) FROM reservation r
-                                   JOIN comic c ON r.comic_id = c.comic_id
-                                   WHERE r.user_id = @userId";
-                 if (!string.IsNullOrWhiteSpace(searchTerm))
-                {
-                    countSql += " AND (c.title LIKE @search OR c.isbn LIKE @search)";
-                }
-                var countParamList = new List<MySqlParameter> {
-                    new MySqlParameter("@userId", loggedInUserId)
-                };
-                 if (!string.IsNullOrWhiteSpace(searchTerm))
-                 {
-                     countParamList.Add(new MySql.Data.MySqlClient.MySqlParameter("@search", "%" + searchTerm + "%"));
-                 }
-
-                long totalRecords = await Task.Run(() => Convert.ToInt64(DBHelper.ExecuteScalar(countSql, countParamList.ToArray())));
-                btnReserveNext.Enabled = (currentReservePage * PageSize) < totalRecords;
-
+                // 在後台查詢總記錄數
+                await Task.Run(async () => {
+                    string countSql = @"SELECT COUNT(*) FROM reservation r
+                                       JOIN comic c ON r.comic_id = c.comic_id
+                                       WHERE r.user_id = @userId";
+                    if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        countSql += " AND (c.title LIKE @search OR c.isbn LIKE @search)";
+                    }
+                    var countParamList = new List<MySqlParameter> {
+                        new MySqlParameter("@userId", loggedInUserId)
+                    };
+                    if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        countParamList.Add(new MySqlParameter("@search", "%" + searchTerm + "%"));
+                    }
+                    long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, countParamList.ToArray()));
+                    
+                    // 在 UI 線程上更新下一頁按鈕狀態
+                    await this.InvokeAsync(() => {
+                        btnReserveNext.Enabled = (currentReservePage * PageSize) < totalRecords;
+                    });
+                });
             }
             catch (Exception ex)
             {
@@ -1325,19 +1357,48 @@ LEFT JOIN (
         // 3. 分頁切換自動刷新
         private async void tabUserMain_SelectedIndexChanged(object sender, EventArgs e)
         {
-            switch (tabUserMain.SelectedTab.Text)
+            try
             {
-                case "首頁":
-                    // 首頁數據已在 RefreshAllSectionsAsync 中處理
-                    break;
-                case "借閱紀錄":
-                    await RefreshBorrowRecordsAsync();
-                    break;
-                case "預約紀錄":
-                    await RefreshReserveRecordsAsync();
-                    break;
-                case "會員中心":
-                    break;
+                switch (tabUserMain.SelectedTab.Text)
+                {
+                    case "首頁":
+                        // 首頁數據已在 RefreshAllSectionsAsync 中處理
+                        break;
+                    case "借閱紀錄":
+                        // 檢查緩存是否有效
+                        if (cachedBorrowRecords == null || 
+                            (DateTime.Now - lastBorrowRefresh).TotalSeconds > CACHE_DURATION_SECONDS)
+                        {
+                            await RefreshBorrowRecordsAsync();
+                        }
+                        else
+                        {
+                            // 使用緩存數據
+                            dgvBorrowRecord.DataSource = cachedBorrowRecords;
+                            SetBorrowGridSettingsAndButtonStatus();
+                        }
+                        break;
+                    case "預約紀錄":
+                        // 檢查緩存是否有效
+                        if (cachedReserveRecords == null || 
+                            (DateTime.Now - lastReserveRefresh).TotalSeconds > CACHE_DURATION_SECONDS)
+                        {
+                            await RefreshReserveRecordsAsync();
+                        }
+                        else
+                        {
+                            // 使用緩存數據
+                            dgvReserveRecord.DataSource = cachedReserveRecords;
+                            SetReserveGridSettingsAndButtonStatus();
+                        }
+                        break;
+                    case "會員中心":
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("切換分頁時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1362,6 +1423,27 @@ LEFT JOIN (
             panelSearch.Controls.Add(cmbSearchType);
             panelSearch.Controls.Add(btnSearch);
             panelSearch.Controls.Add(btnRefresh);
+
+            // 新增分頁控制區
+            var panelPaging = new Panel { Dock = DockStyle.Bottom, Height = 40, BackColor = System.Drawing.Color.WhiteSmoke };
+            btnComicPrev = new Button { Name = "btnComicPrev", Text = "上一頁", Location = new System.Drawing.Point(10, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            lblComicPage = new Label { Name = "lblComicPage", Text = "第 1 頁", Location = new System.Drawing.Point(100, 10), Size = new System.Drawing.Size(100, 20), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F), TextAlign = ContentAlignment.MiddleCenter };
+            btnComicNext = new Button { Name = "btnComicNext", Text = "下一頁", Location = new System.Drawing.Point(210, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            btnComicPrev.Click += async (s, e) => {
+                if (currentComicPage > 1)
+                {
+                    currentComicPage--;
+                    await RefreshUserComicsGrid(txtSearch.Text, cmbSearchType.SelectedItem?.ToString());
+                }
+            };
+            btnComicNext.Click += async (s, e) => {
+                currentComicPage++;
+                await RefreshUserComicsGrid(txtSearch.Text, cmbSearchType.SelectedItem?.ToString());
+            };
+            panelPaging.Controls.Add(btnComicPrev);
+            panelPaging.Controls.Add(lblComicPage);
+            panelPaging.Controls.Add(btnComicNext);
+
             // 主表 DataGridView（Dock=Fill）
             dgvUserComics = new DataGridView
             {
@@ -1382,6 +1464,7 @@ LEFT JOIN (
             dgvUserComics.CellContentClick += DgvUserComics_CellContentClick;
             tabPageHome.Controls.Add(dgvUserComics);
             tabPageHome.Controls.Add(panelSearch);
+            tabPageHome.Controls.Add(panelPaging);
         }
 
         private void SetupBorrowPageLayout()
@@ -1401,13 +1484,13 @@ LEFT JOIN (
             // 分頁區
             var panelPaging = new Panel { Dock = DockStyle.Bottom, Height = 40, BackColor = System.Drawing.Color.WhiteSmoke };
             btnBorrowPrev = new Button { Name = "btnBorrowPrev", Text = "上一頁", Location = new System.Drawing.Point(10, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
-            btnBorrowNext = new Button { Name = "btnBorrowNext", Text = "下一頁", Location = new System.Drawing.Point(100, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
-            lblBorrowPage = new Label { Name = "lblBorrowPage", Text = "第 1 頁", Location = new System.Drawing.Point(200, 10), Size = new System.Drawing.Size(100, 20), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            lblBorrowPage = new Label { Name = "lblBorrowPage", Text = "第 1 頁", Location = new System.Drawing.Point(100, 10), Size = new System.Drawing.Size(100, 20), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F), TextAlign = ContentAlignment.MiddleCenter };
+            btnBorrowNext = new Button { Name = "btnBorrowNext", Text = "下一頁", Location = new System.Drawing.Point(210, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
             btnBorrowPrev.Click += btnBorrowPrev_Click;
             btnBorrowNext.Click += btnBorrowNext_Click;
             panelPaging.Controls.Add(btnBorrowPrev);
-            panelPaging.Controls.Add(btnBorrowNext);
             panelPaging.Controls.Add(lblBorrowPage);
+            panelPaging.Controls.Add(btnBorrowNext);
 
             // DataGridView - 在初始化時設置所有樣式
             dgvBorrowRecord = new DataGridView
@@ -1468,13 +1551,13 @@ LEFT JOIN (
             // 分頁區
             var panelPaging = new Panel { Dock = DockStyle.Bottom, Height = 40, BackColor = System.Drawing.Color.WhiteSmoke };
             btnReservePrev = new Button { Name = "btnReservePrev", Text = "上一頁", Location = new System.Drawing.Point(10, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
-            btnReserveNext = new Button { Name = "btnReserveNext", Text = "下一頁", Location = new System.Drawing.Point(100, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
-            lblReservePage = new Label { Name = "lblReservePage", Text = "第 1 頁", Location = new System.Drawing.Point(200, 10), Size = new System.Drawing.Size(100, 20), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            lblReservePage = new Label { Name = "lblReservePage", Text = "第 1 頁", Location = new System.Drawing.Point(100, 10), Size = new System.Drawing.Size(100, 20), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F), TextAlign = ContentAlignment.MiddleCenter };
+            btnReserveNext = new Button { Name = "btnReserveNext", Text = "下一頁", Location = new System.Drawing.Point(210, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
             btnReservePrev.Click += btnReservePrev_Click;
             btnReserveNext.Click += btnReserveNext_Click;
             panelPaging.Controls.Add(btnReservePrev);
-            panelPaging.Controls.Add(btnReserveNext);
             panelPaging.Controls.Add(lblReservePage);
+            panelPaging.Controls.Add(btnReserveNext);
             // DataGridView
             dgvReserveRecord = new DataGridView
             {
@@ -1574,14 +1657,55 @@ LEFT JOIN (
                     }
                 }
 
+                // 添加分頁
+                sql += " ORDER BY c.comic_id LIMIT @offset, @pageSize";
+                paramList.Add(new MySqlParameter("@offset", (currentComicPage - 1) * ComicPageSize));
+                paramList.Add(new MySqlParameter("@pageSize", ComicPageSize));
+
                 // 在後台執行數據查詢
                 DataTable dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
+
+                // 查詢總記錄數
+                string countSql = "SELECT COUNT(*) FROM comic c WHERE 1=1";
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    if (searchType == "全部")
+                    {
+                        countSql += " AND (c.comic_id LIKE @kw OR c.title LIKE @kw OR c.author LIKE @kw OR c.category LIKE @kw OR c.isbn LIKE @kw OR c.publisher LIKE @kw)";
+                    }
+                    else if (searchType == "書名")
+                    {
+                        countSql += " AND c.title LIKE @kw";
+                    }
+                    else if (searchType == "ISBN")
+                    {
+                        countSql += " AND c.isbn LIKE @kw";
+                    }
+                    else if (searchType == "作者")
+                    {
+                        countSql += " AND c.author LIKE @kw";
+                    }
+                    else if (searchType == "出版社")
+                    {
+                        countSql += " AND c.publisher LIKE @kw";
+                    }
+                    else if (searchType == "分類")
+                    {
+                        countSql += " AND c.category LIKE @kw";
+                    }
+                }
+                long totalRecords = await Task.Run(() => Convert.ToInt64(DBHelper.ExecuteScalar(countSql, paramList.ToArray())));
 
                 // 在 UI 線程上更新 DataGridView
                 await this.InvokeAsync(() => {
                     dgvUserComics.DataSource = dt;
                     SetUserComicsGridColumnSettings();
                     UpdateComicsButtonColumnStates();
+
+                    // 更新分頁控制
+                    lblComicPage.Text = $"第 {currentComicPage} 頁";
+                    btnComicPrev.Enabled = currentComicPage > 1;
+                    btnComicNext.Enabled = (currentComicPage * ComicPageSize) < totalRecords;
                 });
             }
             catch (Exception ex)
