@@ -226,7 +226,7 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show($"新增用戶成功！帳號：{username} (資料庫：{GetCurrentDatabaseName()})", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             await RefreshUserRecordsAsync();
-                            WriteLogEntry("新增用戶", $"uid:{GetInsertedUserId(username)} 原用戶名:{username}被新增");
+                            WriteLogEntry("新增用戶", $"uid:{GetInsertedUserId(username)} 用戶名:{username}被新增");
                             await RefreshLogRecordsAsync();
                         }
                         else
@@ -457,7 +457,7 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             btnComicSearch_Click(null, null); // 重新查詢刷新
-                            WriteLogEntry("刪除漫畫", $"書名={title}");
+                            WriteLogEntry("刪除漫畫", $"{title}漫畫被刪除");
                             await RefreshLogRecordsAsync(); // 刷新日誌列表
                         }
                         else
@@ -501,7 +501,7 @@ namespace WinFormsApp1
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        WriteLogEntry("刪除漫畫", $"書名={deletedTitle}");
+                        WriteLogEntry("刪除漫畫", $"{deletedTitle}漫畫被刪除");
                         await RefreshLogRecordsAsync();
                         RefreshComicRecordsAsync();
                     }
