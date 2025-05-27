@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Minio" Version="6.0.4" />
     <PackageReference Include="MySql.Data" Version="8.2.0" />
     <PackageReference Include="System.Text.Encodings.Web" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />

@@ -38,39 +38,50 @@ namespace WinFormsApp1
         {
             InitializeComponent();
             this.currentUserId = userId;
-            
+
             // 獲取當前登入用戶的用戶名
             string username = GetUsernameById(userId);
             this.Text = $"漫畫租書及預約系統 - 管理員介面（ID:{userId} 用戶名:{username}）";
-            
+
             // 設定字體大小
             this.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
-            
+
+            // 設定視窗大小為固定寬度 910，高度為螢幕 60%，並置中
+            var screen = Screen.PrimaryScreen.WorkingArea;
+            this.Size = new Size(910, (int)(screen.Height * 0.6));
+            this.StartPosition = FormStartPosition.CenterScreen;
+
             // 設定所有 DataGridView 的行高和標題列樣式
             dgvUser.RowTemplate.Height = 30;
             dgvUser.EnableHeadersVisualStyles = false;
             dgvUser.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
             dgvUser.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
             dgvUser.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
-            
+
             dgvComic.RowTemplate.Height = 30;
             dgvComic.EnableHeadersVisualStyles = false;
             dgvComic.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
             dgvComic.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
             dgvComic.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
-            
+
             dgvBorrow.RowTemplate.Height = 30;
             dgvBorrow.EnableHeadersVisualStyles = false;
             dgvBorrow.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
             dgvBorrow.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
             dgvBorrow.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
-            
+
             dgvReserve.RowTemplate.Height = 30;
             dgvReserve.EnableHeadersVisualStyles = false;
             dgvReserve.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
             dgvReserve.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
             dgvReserve.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
-            
+
+            dgvLog.RowTemplate.Height = 30;
+            dgvLog.EnableHeadersVisualStyles = false;
+            dgvLog.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+            dgvLog.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
+            dgvLog.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F, System.Drawing.FontStyle.Bold);
+
             EnsureUserActionButtons();
             InitializeEventHandlers();
         }
@@ -185,7 +196,7 @@ namespace WinFormsApp1
                 // 初始化載入時，不使用分頁
                 await RefreshUserRecordsAsync(applyPagination: false);
                 await RefreshComicRecordsAsync(applyPagination: false);
-                
+
                 currentBorrowPage = 1;
                 currentReservePage = 1;
                 await RefreshBorrowRecordsAsync();
@@ -352,8 +363,8 @@ namespace WinFormsApp1
                     }
                     else
                     {
-                         sql += " AND username LIKE @keyword";
-                         paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
+                        sql += " AND username LIKE @keyword";
+                        paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
                     }
                 }
                 sql += " ORDER BY user_id";
@@ -362,32 +373,33 @@ namespace WinFormsApp1
                 paramList.Add(new MySqlParameter("@offset", (currentUserPage - 1) * PageSize));
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
                 var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                this.Invoke((MethodInvoker)delegate {
-                     dgvUser.DataSource = null;
-                     dgvUser.DataSource = dt;
-                     SetUserGridColumnWidths();
-                     dgvUser.Refresh();
-                     // 更新分頁標籤
-                     lblUserPage.Text = $"第 {currentUserPage} 頁";
-                     // 查詢總數以決定按鈕狀態
-                     string countSql = "SELECT COUNT(*) FROM user WHERE 1=1";
-                     if (!string.IsNullOrWhiteSpace(keyword))
-                     {
-                         if (searchType == "用戶ID")
-                         {
-                             if (int.TryParse(keyword, out int userId))
-                             {
-                                 countSql += " AND user_id = @userId";
-                             }
-                         }
-                         else
-                         {
-                             countSql += " AND username LIKE @keyword";
-                         }
-                     }
-                     long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, paramList.ToArray()));
-                     btnUserPrev.Enabled = currentUserPage > 1;
-                     btnUserNext.Enabled = (currentUserPage * PageSize) < totalRecords;
+                this.Invoke((MethodInvoker)delegate
+                {
+                    dgvUser.DataSource = null;
+                    dgvUser.DataSource = dt;
+                    SetUserGridColumnWidths();
+                    dgvUser.Refresh();
+                    // 更新分頁標籤
+                    lblUserPage.Text = $"第 {currentUserPage} 頁";
+                    // 查詢總數以決定按鈕狀態
+                    string countSql = "SELECT COUNT(*) FROM user WHERE 1=1";
+                    if (!string.IsNullOrWhiteSpace(keyword))
+                    {
+                        if (searchType == "用戶ID")
+                        {
+                            if (int.TryParse(keyword, out int userId))
+                            {
+                                countSql += " AND user_id = @userId";
+                            }
+                        }
+                        else
+                        {
+                            countSql += " AND username LIKE @keyword";
+                        }
+                    }
+                    long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, paramList.ToArray()));
+                    btnUserPrev.Enabled = currentUserPage > 1;
+                    btnUserNext.Enabled = (currentUserPage * PageSize) < totalRecords;
                 });
             }
             catch (Exception ex)
@@ -620,12 +632,12 @@ namespace WinFormsApp1
                 AND comic_id = @comicId 
                 AND return_date IS NOT NULL 
                 AND return_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-            
+
             MySqlParameter[] parameters = {
                 new MySqlParameter("@userId", userId),
                 new MySqlParameter("@comicId", comicId)
             };
-            
+
             int count = Convert.ToInt32(DBHelper.ExecuteScalar(sql, parameters));
             return count > 0;
         }
@@ -639,12 +651,12 @@ namespace WinFormsApp1
                 WHERE user_id = @userId 
                 AND comic_id = @comicId 
                 AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
-            
+
             MySqlParameter[] parameters = {
                 new MySqlParameter("@userId", userId),
                 new MySqlParameter("@comicId", comicId)
             };
-            
+
             int count = Convert.ToInt32(DBHelper.ExecuteScalar(sql, parameters));
             return count > 0;
         }
@@ -712,7 +724,7 @@ namespace WinFormsApp1
                 // 將搜尋條件也應用到計數 SQL
                 if (!string.IsNullOrWhiteSpace(currentBorrowSearchKeyword))
                 {
-                     string field = currentBorrowSearchType switch
+                    string field = currentBorrowSearchType switch
                     {
                         "用戶" => "u.username",
                         "書名" => "c.title",
@@ -731,8 +743,9 @@ namespace WinFormsApp1
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
 
                 var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                
-                this.Invoke((MethodInvoker)delegate {
+
+                this.Invoke((MethodInvoker)delegate
+                {
                     dgvBorrow.DataSource = null;
                     dgvBorrow.DataSource = dt;
                     SetBorrowGridColumnWidths();
@@ -790,10 +803,10 @@ namespace WinFormsApp1
                                     JOIN user u ON r.user_id = u.user_id
                                     JOIN comic c ON r.comic_id = c.comic_id
                                     WHERE 1=1";
-                 // 將搜尋條件也應用到計數 SQL
+                // 將搜尋條件也應用到計數 SQL
                 if (!string.IsNullOrWhiteSpace(currentReserveSearchKeyword))
                 {
-                     string field = currentReserveSearchType switch
+                    string field = currentReserveSearchType switch
                     {
                         "用戶" => "u.username",
                         "書名" => "c.title",
@@ -812,8 +825,9 @@ namespace WinFormsApp1
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
 
                 var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                
-                this.Invoke((MethodInvoker)delegate {
+
+                this.Invoke((MethodInvoker)delegate
+                {
                     dgvReserve.DataSource = null;
                     dgvReserve.DataSource = dt;
                     SetReserveGridColumnWidths();
@@ -893,31 +907,37 @@ namespace WinFormsApp1
 
         private void SetUserGridColumnWidths()
         {
-            if (dgvUser.Columns.Contains("用戶ID")) {
+            if (dgvUser.Columns.Contains("用戶ID"))
+            {
                 dgvUser.Columns["用戶ID"].Width = 60;
                 dgvUser.Columns["用戶ID"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvUser.Columns["用戶ID"].DisplayIndex = 0;
             }
-            if (dgvUser.Columns.Contains("用戶名")) {
+            if (dgvUser.Columns.Contains("用戶名"))
+            {
                 dgvUser.Columns["用戶名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 dgvUser.Columns["用戶名"].DisplayIndex = 1;
             }
-            if (dgvUser.Columns.Contains("角色")) {
+            if (dgvUser.Columns.Contains("角色"))
+            {
                 dgvUser.Columns["角色"].Width = 80;
                 dgvUser.Columns["角色"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvUser.Columns["角色"].DisplayIndex = 2;
             }
-            if (dgvUser.Columns.Contains("狀態")) {
+            if (dgvUser.Columns.Contains("狀態"))
+            {
                 dgvUser.Columns["狀態"].Width = 80;
                 dgvUser.Columns["狀態"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvUser.Columns["狀態"].DisplayIndex = 3;
             }
-            if (dgvUser.Columns.Contains("查看借閱紀錄")) {
+            if (dgvUser.Columns.Contains("查看借閱紀錄"))
+            {
                 dgvUser.Columns["查看借閱紀錄"].Width = 110;
                 dgvUser.Columns["查看借閱紀錄"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvUser.Columns["查看借閱紀錄"].DisplayIndex = 4;
             }
-            if (dgvUser.Columns.Contains("查看預約紀錄")) {
+            if (dgvUser.Columns.Contains("查看預約紀錄"))
+            {
                 dgvUser.Columns["查看預約紀錄"].Width = 110;
                 dgvUser.Columns["查看預約紀錄"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvUser.Columns["查看預約紀錄"].DisplayIndex = 5;
@@ -936,19 +956,19 @@ namespace WinFormsApp1
             // 讓書名自動填滿剩餘空間
             if (dgvBorrow.Columns.Contains("書名"))
             {
-                 dgvBorrow.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                dgvBorrow.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             }
-            
+
             // 確保狀態欄位在最後
-             if (dgvBorrow.Columns.Contains("狀態"))
+            if (dgvBorrow.Columns.Contains("狀態"))
             {
-                dgvBorrow.Columns["狀態"].DisplayIndex = dgvBorrow.Columns.Count - 1; 
+                dgvBorrow.Columns["狀態"].DisplayIndex = dgvBorrow.Columns.Count - 1;
             }
 
             // 將其他未明確設定寬度的欄位 AutoSizeMode 設為 None，防止擠壓
             foreach (DataGridViewColumn col in dgvBorrow.Columns)
             {
-                if (!new[] {"編號", "用戶", "書名", "ISBN", "借閱日期", "歸還日期", "狀態"}.Contains(col.Name))
+                if (!new[] { "編號", "用戶", "書名", "ISBN", "借閱日期", "歸還日期", "狀態" }.Contains(col.Name))
                 {
                     col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 }
@@ -967,9 +987,9 @@ namespace WinFormsApp1
             // 讓書名自動填滿剩餘空間
             if (dgvReserve.Columns.Contains("書名"))
             {
-                 dgvReserve.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                dgvReserve.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             }
-            
+
             // 設定顯示順序
             if (dgvReserve.Columns.Contains("編號")) dgvReserve.Columns["編號"].DisplayIndex = 0;
             if (dgvReserve.Columns.Contains("用戶")) dgvReserve.Columns["用戶"].DisplayIndex = 1;
@@ -980,7 +1000,7 @@ namespace WinFormsApp1
             if (dgvReserve.Columns.Contains("狀態")) dgvReserve.Columns["狀態"].DisplayIndex = 6;
 
             // 確保其他欄位沒有 AutoSizeMode.Fill
-             foreach (DataGridViewColumn col in dgvReserve.Columns)
+            foreach (DataGridViewColumn col in dgvReserve.Columns)
             {
                 if (col.Name != "書名")
                 {
@@ -991,32 +1011,38 @@ namespace WinFormsApp1
         private void SetComicGridColumnWidths()
         {
             // 設置前三欄的順序和寬度
-            if (dgvComic.Columns.Contains("書號")) {
+            if (dgvComic.Columns.Contains("書號"))
+            {
                 dgvComic.Columns["書號"].Width = 80;
                 dgvComic.Columns["書號"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvComic.Columns["書號"].DisplayIndex = 0;
             }
-            if (dgvComic.Columns.Contains("書名")) {
+            if (dgvComic.Columns.Contains("書名"))
+            {
                 dgvComic.Columns["書名"].Width = 250;
                 dgvComic.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvComic.Columns["書名"].DisplayIndex = 1;
             }
-            if (dgvComic.Columns.Contains("ISBN")) {
+            if (dgvComic.Columns.Contains("ISBN"))
+            {
                 dgvComic.Columns["ISBN"].Width = 120;
                 dgvComic.Columns["ISBN"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvComic.Columns["ISBN"].DisplayIndex = 2;
             }
-            
+
             // 設置其他欄位的順序和寬度
-            if (dgvComic.Columns.Contains("作者")) {
+            if (dgvComic.Columns.Contains("作者"))
+            {
                 dgvComic.Columns["作者"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 dgvComic.Columns["作者"].DisplayIndex = 3;
             }
-            if (dgvComic.Columns.Contains("出版社")) {
+            if (dgvComic.Columns.Contains("出版社"))
+            {
                 dgvComic.Columns["出版社"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 dgvComic.Columns["出版社"].DisplayIndex = 4;
             }
-            if (dgvComic.Columns.Contains("分類")) {
+            if (dgvComic.Columns.Contains("分類"))
+            {
                 dgvComic.Columns["分類"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 dgvComic.Columns["分類"].DisplayIndex = 5;
             }
@@ -1164,20 +1190,27 @@ namespace WinFormsApp1
                     paramList.Add(new MySqlParameter("@pageSize", PageSize));
                 }
                 var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
-                
-                this.Invoke((MethodInvoker)delegate {
+
+                this.Invoke((MethodInvoker)delegate
+                {
                     dgvComic.DataSource = null;
                     dgvComic.DataSource = dt;
                     SetComicGridColumnWidths();
                     dgvComic.Refresh();
                     // 分頁控制
-                    if (lblComicPage != null && btnComicPrev != null && btnComicNext != null) {
+                    if (lblComicPage != null && btnComicPrev != null && btnComicNext != null)
+                    {
                         string countSql = "SELECT COUNT(*) FROM comic WHERE 1=1";
-                        if (!string.IsNullOrWhiteSpace(keyword)) {
-                            if (searchType == "書號" && int.TryParse(keyword, out int comicId)) {
+                        if (!string.IsNullOrWhiteSpace(keyword))
+                        {
+                            if (searchType == "書號" && int.TryParse(keyword, out int comicId))
+                            {
                                 countSql += " AND comic_id = @comic_id";
-                            } else {
-                                string field = searchType switch {
+                            }
+                            else
+                            {
+                                string field = searchType switch
+                                {
                                     "書名" => "title",
                                     "ISBN" => "isbn",
                                     "作者" => "author",
@@ -1324,7 +1357,8 @@ namespace WinFormsApp1
                 }
                 long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, countParamList.ToArray()));
 
-                this.Invoke((MethodInvoker)delegate {
+                this.Invoke((MethodInvoker)delegate
+                {
                     dgvLog.DataSource = null;
                     dgvLog.DataSource = dt;
                     SetLogGridColumnWidths();
@@ -1364,10 +1398,10 @@ namespace WinFormsApp1
         // 設定日誌 DataGridView 列寬 (稍後在 AdminForm.Designer.cs 中實現)
         private void SetLogGridColumnWidths()
         {
-             if (dgvLog.Columns.Contains("時間")) { dgvLog.Columns["時間"].Width = 150; }
-             if (dgvLog.Columns.Contains("管理員名稱")) { dgvLog.Columns["管理員名稱"].Width = 100; }
-             if (dgvLog.Columns.Contains("操作類型")) { dgvLog.Columns["操作類型"].Width = 120; }
-             if (dgvLog.Columns.Contains("操作詳情")) { dgvLog.Columns["操作詳情"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; }
+            if (dgvLog.Columns.Contains("時間")) { dgvLog.Columns["時間"].Width = 150; }
+            if (dgvLog.Columns.Contains("管理員名稱")) { dgvLog.Columns["管理員名稱"].Width = 100; }
+            if (dgvLog.Columns.Contains("操作類型")) { dgvLog.Columns["操作類型"].Width = 120; }
+            if (dgvLog.Columns.Contains("操作詳情")) { dgvLog.Columns["操作詳情"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; }
         }
 
         // 分頁按鈕事件
@@ -1423,4 +1457,4 @@ namespace WinFormsApp1
             return result != null ? Convert.ToInt32(result) : 0;
         }
     }
-} 
+}

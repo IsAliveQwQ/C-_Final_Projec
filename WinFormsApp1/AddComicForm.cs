@@ -1,49 +1,86 @@
 using System.Windows.Forms;
+using System.Drawing;
+using System;
+using System.IO;
 
 namespace WinFormsApp1
 {
     public partial class AddComicForm : Form
     {
+        private PictureBox pbComicImage;
+        private Button btnSelectImage;
+        private OpenFileDialog openFileDialog;
+
         public AddComicForm()
         {
             InitializeComponent();
+            this.Text = "新增/編輯漫畫";
+
+            pbComicImage = new PictureBox
+            {
+                BorderStyle = BorderStyle.FixedSingle,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Size = new Size(150, 200),
+                Location = new Point(250, 20)
+            };
+
+            btnSelectImage = new Button
+            {
+                Text = "選擇圖片",
+                Size = new Size(100, 30),
+                Location = new Point(275, 230)
+            };
+            btnSelectImage.Click += BtnSelectImage_Click;
+
+            openFileDialog = new OpenFileDialog
+            {
+                Filter = "圖片檔案|*.jpg;*.jpeg;*.png;*.gif;*.bmp",
+                Title = "選擇漫畫圖片"
+            };
+
+            this.Controls.Add(pbComicImage);
+            this.Controls.Add(btnSelectImage);
         }
 
-        // 在這裡可以添加屬性或方法來獲取用戶輸入的漫畫資訊
         public string ComicTitle { get; private set; }
         public string ComicISBN { get; private set; }
         public string ComicAuthor { get; private set; }
         public string ComicPublisher { get; private set; }
         public string ComicCategory { get; private set; }
+        public string ImagePath { get; private set; }
 
-        // 按鈕事件處理器，用於獲取輸入並關閉視窗
         private void btnSave_Click(object sender, EventArgs e)
         {
-            // 獲取用戶輸入
             ComicTitle = txtTitle.Text;
             ComicISBN = txtISBN.Text;
             ComicAuthor = txtAuthor.Text;
             ComicPublisher = txtPublisher.Text;
             ComicCategory = txtCategory.Text;
 
-            // Validate ISBN is numeric
             if (!long.TryParse(ComicISBN, out _))
             {
                 MessageBox.Show("ISBN 必須是數字！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                this.DialogResult = DialogResult.None; // Stay on the form
+                this.DialogResult = DialogResult.None;
                 return;
             }
 
-            // 設定 DialogResult 為 OK，表示用戶點擊了儲存
             this.DialogResult = DialogResult.OK;
             this.Close();
         }
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
-            // 設定 DialogResult 為 Cancel，表示用戶取消
             this.DialogResult = DialogResult.Cancel;
             this.Close();
+        }
+
+        private void BtnSelectImage_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                ImagePath = openFileDialog.FileName;
+                pbComicImage.Image = Image.FromFile(ImagePath);
+            }
         }
     }
 } 

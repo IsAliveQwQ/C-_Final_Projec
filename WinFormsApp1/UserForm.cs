@@ -4,11 +4,25 @@ using System.Windows.Forms;
 using MySql.Data.MySqlClient;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Minio; // 引入 Minio 程式庫
+using Minio.Exceptions; // 處理 Minio 異常
 
 #nullable disable  // 禁用 nullable reference types 檢查
 
 namespace WinFormsApp1
 {
+    // 新增一個類別來儲存漫畫詳細資訊
+    public class ComicDetails
+    {
+        public string 書名 { get; set; }
+        public string 作者 { get; set; }
+        public string 出版社 { get; set; }
+        public string 分類 { get; set; }
+        public string ISBN { get; set; }
+        public string 借閱狀態 { get; set; }
+        public string 預約狀態 { get; set; }
+    }
+
     public partial class UserForm : Form
     {
         private int loggedInUserId = 0; // 用於儲存登入使用者的 ID
@@ -38,6 +52,70 @@ namespace WinFormsApp1
         private DateTime lastBorrowRefresh = DateTime.MinValue;
         private DateTime lastReserveRefresh = DateTime.MinValue;
         private const int CACHE_DURATION_SECONDS = 30; // 緩存有效期30秒
+
+        // MinIO 連線資訊 (建議移至設定檔)
+        private const string MinioEndpoint = "bucket-production-63a9.up.railway.app";
+        private const string MinioAccessKey = "dkF1y6M79nH7i8BTBfXuOmf6x6bNJ1rW";
+        private const string MinioSecretKey = "Lq4ijpczUkbRznusbOAm0hOWiXLRBdQDb16fJQgbcPH3Q0Xn";
+        private const string BucketName = "comic-images"; // 您希望用於儲存漫畫圖片的儲存桶名稱
+
+        private IMinioClient minioClient;
+
+        // 初始化 Minio 客戶端
+        private async Task InitializeMinioClientAsync()
+        {
+            try
+            {
+                minioClient = new MinioClient()
+                    .WithEndpoint(MinioEndpoint)
+                    .WithCredentials(MinioAccessKey, MinioSecretKey)
+                    .Build();
+
+                // 檢查或創建儲存桶
+                await CheckOrCreateBucketAsync(BucketName);
+                Console.WriteLine("MinIO client initialized successfully and bucket checked/created.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化 MinIO 客戶端時發生錯誤: {ex.Message}", "MinIO 錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                minioClient = null; // 初始化失敗
+            }
+        }
+
+        // 檢查或創建儲存桶的異步方法
+        private async Task CheckOrCreateBucketAsync(string bucketName)
+        {
+            try
+            {
+                // 使用 BucketExistsArgs.WithBucket() 建立參數物件
+                bool found = await minioClient.BucketExistsAsync(
+                    new Minio.DataModel.Args.BucketExistsArgs().WithBucket(bucketName)
+                );
+
+                if (!found)
+                {
+                    // 使用 MakeBucketArgs.WithBucket() 建立參數物件
+                    await minioClient.MakeBucketAsync(
+                        new Minio.DataModel.Args.MakeBucketArgs().WithBucket(bucketName)
+                    );
+                    Console.WriteLine($"Bucket '{bucketName}' created successfully.");
+                }
+                else
+                {
+                    Console.WriteLine($"Bucket '{bucketName}' already exists.");
+                }
+            }
+            catch (MinioException ex)
+            {
+                Console.WriteLine($"MinIO Error while checking/creating bucket: {ex.Message}");
+                // throw; // Rethrow the exception if necessary
+            }
+            catch (Exception ex)
+            {
+                 Console.WriteLine($"Generic Error while checking/creating bucket: {ex.Message}");
+                 // throw; // Rethrow the exception if necessary
+            }
+        }
 
         // 使用者介面表單的建構子 (接收使用者 ID 和角色)
         public UserForm(int userId, string userRole)
@@ -86,7 +164,7 @@ namespace WinFormsApp1
 
             // 設定視窗大小為固定寬度 1042，高度為螢幕 60%，並置中
             var screen = Screen.PrimaryScreen.WorkingArea;
-            this.Size = new Size(1042, (int)(screen.Height * 0.6));
+            this.Size = new Size(1242, (int)(screen.Height * 0.6)); // 增加寬度 200 像素
             this.StartPosition = FormStartPosition.CenterScreen;
 
             // 為搜尋按鈕添加點擊事件
@@ -179,6 +257,9 @@ namespace WinFormsApp1
             {
                 try
                 {
+                    // 初始化 MinIO 客戶端
+                    await InitializeMinioClientAsync();
+
                     // 4.1 載入首頁漫畫列表
                     await this.InvokeAsync(() => RefreshUserComicsGrid("", "全部"));
 
@@ -1726,19 +1807,46 @@ LEFT JOIN (
             // Define desired order and width for all potential columns
             var columnSettings = new List<(string Name, string Header, int Width)>()
             {
-                ("書號", "編號", 60), // 將顯示標題「書號」改為「編號」
-                ("ISBN", "ISBN", 80),
-                ("書名", "書名", 200),
+                ("書號", "編號", 70),
+                ("ISBN", "ISBN", 70),
+                ("書名", "書名", 175),
                 ("作者", "作者", 80),
-                ("出版社", "出版社", 100),
-                ("分類", "分類", 100),
-                ("借閱狀態", "借閱狀態", 90),
-                ("預約狀態", "預約狀態", 90),
-                ("借書", "借書", 80),
-                ("預約", "預約", 80)
+                ("出版社", "出版社", 90), // 將寬度從 100 改為 90 (-10)
+                ("分類", "分類", 59), // 將寬度從 55 改為 59 (+4)
+                ("詳情", "詳情", 58), // 將寬度從 55 改為 58 (+3)
+                ("收藏", "收藏", 58), // 將寬度從 55 改為 58 (+3)
+                ("借閱狀態", "借閱狀態", 76),
+                ("預約狀態", "預約狀態", 76),
+                ("借書", "借書", 76),
+                ("預約", "預約", 76)
             };
 
             // Add button columns if they don't exist yet
+            if (dgvUserComics.Columns["詳情"] == null)
+            {
+                var btnDetails = new DataGridViewButtonColumn
+                {
+                    Name = "詳情",
+                    HeaderText = "詳情",
+                    Text = "詳情",
+                    UseColumnTextForButtonValue = false,
+                    Width = 58 // 使用新的寬度
+                };
+                dgvUserComics.Columns.Add(btnDetails);
+            }
+            // 新增收藏按鈕欄位
+            if (dgvUserComics.Columns["收藏"] == null)
+            {
+                var btnFavorite = new DataGridViewButtonColumn
+                {
+                    Name = "收藏",
+                    HeaderText = "收藏",
+                    Text = "收藏", // 預設按鈕文字
+                    UseColumnTextForButtonValue = true, // 使用 Value property
+                    Width = 58 // 使用新的寬度
+                };
+                dgvUserComics.Columns.Add(btnFavorite);
+            }
             if (dgvUserComics.Columns["借書"] == null)
             {
                 var btnRent = new DataGridViewButtonColumn
@@ -1747,7 +1855,7 @@ LEFT JOIN (
                     HeaderText = "借書",
                     Text = "借書", // Fallback text
                     UseColumnTextForButtonValue = false, // Use Value property
-                    Width = 80     // 增加寬度從 60 到 80
+                    Width = 76
                 };
                 dgvUserComics.Columns.Add(btnRent);
             }
@@ -1759,7 +1867,7 @@ LEFT JOIN (
                     HeaderText = "預約",
                     Text = "預約", // Fallback text
                     UseColumnTextForButtonValue = false, // Use Value property
-                    Width = 80     // 增加寬度從 60 到 80
+                    Width = 76
                 };
                 dgvUserComics.Columns.Add(btnReserve);
             }
@@ -1781,6 +1889,13 @@ LEFT JOIN (
                             col.DataPropertyName = setting.Name; // Set DataPropertyName for data columns
                         }
                         col.DisplayIndex = displayIndex++;
+
+                        // 設定特定按鈕欄位的標題列文字置中
+                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "借書" || setting.Name == "預約")
+                        {
+                            col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                        }
+
                     }
                     catch (ArgumentOutOfRangeException ex)
                     {
@@ -1908,7 +2023,28 @@ LEFT JOIN (
         // DataGridView 按鈕點擊事件：根據欄位與行資料執行借書/預約邏輯
         private async void DgvUserComics_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || dgvUserComics.CurrentRow == null) return;
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                var columnName = dgvUserComics.Columns[e.ColumnIndex].Name;
+                var comicId = Convert.ToInt32(dgvUserComics.Rows[e.RowIndex].Cells["書號"].Value);
+
+                if (columnName == "詳情") // 將「詳細資訊」改為「詳情」
+                {
+                    var comic = GetComicById(comicId);
+                    if (comic != null)
+                    {
+                        // 建立新的 ComicDetailsForm 實例
+                        var detailsForm = new ComicDetailsForm(comic);
+
+                        // 設定彈窗大小
+                        detailsForm.Size = new Size(this.Width / 2, this.Height);
+
+                        // 顯示彈窗
+                        detailsForm.ShowDialog(this);
+                    }
+                }
+            }
+            else if (e.RowIndex < 0 || dgvUserComics.CurrentRow == null) return;
             var row = dgvUserComics.Rows[e.RowIndex];
             // 獲取點擊的儲存格
             var clickedCell = row.Cells[e.ColumnIndex];
@@ -2553,6 +2689,64 @@ LEFT JOIN (
             catch
             {
                 return "未知用戶";
+            }
+        }
+
+        // 在 UserForm 類別中新增 GetComicById 方法
+        private ComicDetails GetComicById(int comicId)
+        {
+            try
+            {
+                string sql = @"SELECT 
+                                c.comic_id, 
+                                c.isbn AS ISBN, 
+                                c.title AS 書名, 
+                                c.author AS 作者, 
+                                c.publisher AS 出版社, 
+                                c.category AS 分類,
+                                CASE WHEN br.comic_id IS NOT NULL THEN '已被借' ELSE '未被借' END AS 借閱狀態,
+                                CASE
+                                    WHEN br.comic_id IS NOT NULL THEN '不可預約'
+                                    WHEN r.comic_id IS NOT NULL THEN '已被預約'
+                                    ELSE '可預約'
+                                END AS 預約狀態
+                            FROM comic c
+                            LEFT JOIN borrow_record br ON c.comic_id = br.comic_id AND br.return_date IS NULL
+                            LEFT JOIN (
+                                SELECT comic_id FROM reservation
+                                WHERE status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                            ) r ON c.comic_id = r.comic_id
+                            WHERE c.comic_id = @comicId";
+
+                MySqlParameter[] parameters = {
+                    new MySqlParameter("@comicId", comicId)
+                };
+
+                DataTable dt = DBHelper.ExecuteQuery(sql, parameters);
+
+                if (dt.Rows.Count > 0)
+                {
+                    DataRow row = dt.Rows[0];
+                    return new ComicDetails
+                    {
+                        書名 = row["書名"].ToString(),
+                        作者 = row["作者"].ToString(),
+                        出版社 = row["出版社"].ToString(),
+                        分類 = row["分類"].ToString(),
+                        ISBN = row["ISBN"].ToString(),
+                        借閱狀態 = row["借閱狀態"].ToString(),
+                        預約狀態 = row["預約狀態"].ToString()
+                    };
+                }
+                else
+                {
+                    return null; // 找不到對應的漫畫
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("獲取漫畫詳細資訊時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
             }
         }
     }
