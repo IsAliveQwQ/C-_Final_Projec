@@ -1489,8 +1489,8 @@ LEFT JOIN (
             btnBorrowPrev.Click += btnBorrowPrev_Click;
             btnBorrowNext.Click += btnBorrowNext_Click;
             panelPaging.Controls.Add(btnBorrowPrev);
-            panelPaging.Controls.Add(lblBorrowPage);
             panelPaging.Controls.Add(btnBorrowNext);
+            panelPaging.Controls.Add(lblBorrowPage);
 
             // DataGridView - 在初始化時設置所有樣式
             dgvBorrowRecord = new DataGridView
@@ -1503,7 +1503,7 @@ LEFT JOIN (
                 MultiSelect = false,
                 Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F),
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle 
-                { 
+                {
                     Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold),
                     BackColor = System.Drawing.Color.WhiteSmoke
                 },
@@ -1513,7 +1513,8 @@ LEFT JOIN (
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
                 EnableHeadersVisualStyles = false,
-                BackgroundColor = System.Drawing.Color.White
+                BackgroundColor = System.Drawing.Color.White,
+                ScrollBars = ScrollBars.Vertical // Disable horizontal scrollbar
             };
 
             // 啟用雙緩衝
@@ -1556,8 +1557,8 @@ LEFT JOIN (
             btnReservePrev.Click += btnReservePrev_Click;
             btnReserveNext.Click += btnReserveNext_Click;
             panelPaging.Controls.Add(btnReservePrev);
-            panelPaging.Controls.Add(lblReservePage);
             panelPaging.Controls.Add(btnReserveNext);
+            panelPaging.Controls.Add(lblReservePage);
             // DataGridView
             dgvReserveRecord = new DataGridView
             {
@@ -1578,7 +1579,8 @@ LEFT JOIN (
                 ColumnHeadersHeight = 24,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
-                BackgroundColor = System.Drawing.Color.White
+                BackgroundColor = System.Drawing.Color.White,
+                ScrollBars = ScrollBars.Vertical // Disable horizontal scrollbar
             };
             dgvReserveRecord.EnableHeadersVisualStyles = false;
             dgvReserveRecord.DataBindingComplete += DgvReserveRecord_DataBindingComplete;

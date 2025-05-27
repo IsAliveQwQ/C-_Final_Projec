@@ -68,9 +68,9 @@ namespace WinFormsApp1
 
             try
             {
-                // 查詢使用者 (從 user 表)
+                // 查詢使用者 (從 user 表)，同時獲取 status 欄位
                 // 注意：這裡直接比對明文密碼，實際應用應對 password 進行哈希後再比對 password_hash
-                string sql = "SELECT user_id, role FROM user WHERE username = @username AND password_hash = @password";
+                string sql = "SELECT user_id, role, status FROM user WHERE username = @username AND password_hash = @password";
                 MySqlParameter[] parameters = { // 需要使用 MySqlParameter
                     new MySqlParameter("@username", username),
                     new MySqlParameter("@password", password) // 這裡應是哈希後的密碼
@@ -80,11 +80,23 @@ namespace WinFormsApp1
 
                 if (dt.Rows.Count > 0)
                 {
-                    // 登入成功，獲取 user_id 和 role
+                    // 登入成功，獲取 user_id, role 和 status
                     loggedInUserId = Convert.ToInt32(dt.Rows[0]["user_id"]); // 獲取 user_id
                     loggedInUserRole = dt.Rows[0]["role"].ToString(); // 獲取角色
+                    string userStatus = dt.Rows[0]["status"].ToString(); // 獲取狀態
 
-                    // 根據角色設定 DialogResult
+                    // 檢查用戶狀態
+                    if (userStatus == "frozen")
+                    {
+                        MessageBox.Show("您的帳號因有逾期未歸還書籍而被凍結，無法登入，請聯絡管理員解凍。", "帳號凍結", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        this.DialogResult = DialogResult.None; // 保持對話框開啟
+                        // Reset logged-in user info as login failed
+                        loggedInUserId = 0;
+                        loggedInUserRole = "";
+                        return; // Stop the login process
+                    }
+
+                    // 如果用戶狀態不是 frozen，則根據角色設定 DialogResult 正常登入
                     if (loggedInUserRole == "admin")
                     {
                         this.DialogResult = DialogResult.OK; // 管理員登入成功
@@ -98,9 +110,13 @@ namespace WinFormsApp1
                          // 未知角色，視為登入失敗
                         MessageBox.Show("未知的使用者角色！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         this.DialogResult = DialogResult.None; // 保持對話框開啟
+                        // Reset logged-in user info as login failed
+                        loggedInUserId = 0;
+                        loggedInUserRole = "";
                     }
 
                     // 對話框會在 DialogResult 設定為 OK 時自動關閉
+
                 }
                 else
                 {
