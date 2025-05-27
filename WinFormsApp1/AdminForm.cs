@@ -102,6 +102,10 @@ namespace WinFormsApp1
             this.btnReservePrev.Click += async (s, e) => { currentReservePage -= 1; await RefreshReserveRecordsAsync(); };
             this.btnReserveNext.Click += async (s, e) => { currentReservePage += 1; await RefreshReserveRecordsAsync(); };
 
+            // 管理日誌事件
+            this.btnLogSearch.Click += new EventHandler(this.btnLogSearch_Click);
+            this.btnRefreshLog.Click += async (s, e) => await RefreshLogRecordsAsync();
+
             // DataGridView 事件
             this.dgvComic.CellContentClick += new DataGridViewCellEventHandler(this.dgvComic_CellContentClick);
             this.dgvUser.CellContentClick += new DataGridViewCellEventHandler(this.dgvUser_CellContentClick);
@@ -117,6 +121,9 @@ namespace WinFormsApp1
                 currentReservePage = 1;
                 await RefreshBorrowRecordsAsync();
                 await RefreshReserveRecordsAsync();
+
+                // 載入管理日誌
+                await RefreshLogRecordsAsync();
             };
         }
 
@@ -152,6 +159,8 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("漫畫新增成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             await RefreshComicRecordsAsync(applyPagination: false); // 刷新時不使用分頁
+                            WriteLogEntry("Add Comic", $"新增了漫畫：{title} (ISBN: {isbn})"); // 寫入日誌
+                            await RefreshLogRecordsAsync(); // 刷新日誌列表
                         }
                         else
                         {
@@ -178,6 +187,9 @@ namespace WinFormsApp1
                 currentReservePage = 1;
                 await RefreshBorrowRecordsAsync();
                 await RefreshReserveRecordsAsync();
+
+                // 載入管理日誌
+                await RefreshLogRecordsAsync();
             }
             catch (Exception ex)
             {
@@ -212,6 +224,8 @@ namespace WinFormsApp1
                             MessageBox.Show($"新增用戶成功！帳號：{username} (資料庫：{GetCurrentDatabaseName()})", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             // 新增用戶成功後，呼叫 RefreshUserRecordsAsync 刷新用戶列表 (獲取所有用戶)
                             await RefreshUserRecordsAsync();
+                            WriteLogEntry("Add User", $"新增了用戶：{username}"); // 寫入日誌
+                            await RefreshLogRecordsAsync(); // 刷新日誌列表
                         }
                         else
                         {
@@ -276,6 +290,7 @@ namespace WinFormsApp1
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        WriteLogEntry("Delete User", $"刪除了用戶ID：{userId} (用戶名：{dgvUser.CurrentRow.Cells["用戶名"].Value})"); // 寫入日誌
                         AdminForm_Load(null, null);
                     }
                     else
@@ -292,14 +307,16 @@ namespace WinFormsApp1
 
         // 用戶管理分頁
         private async Task RefreshUserRecordsAsync(
-            string keyword = null, 
+            string keyword = null,
             string searchType = "用戶名", // 新增 searchType 參數，預設用戶名
             bool applyPagination = false,
             int page = 1)
         {
             try
             {
-                currentUserPage = page; // 更新當前頁碼
+                // currentUserPage = page; // 更新當前頁碼 - Reverted
+                // currentUserSearchKeyword = keyword; // 更新當前搜尋關鍵字 - Reverted
+                // string currentSearchType = searchType; // 使用一個局部變數避免混淆 - Reverted
 
                 string sql = "SELECT user_id AS 用戶ID, username AS 用戶名, role AS 角色, " +
                            "CASE WHEN status = 'active' THEN '正常' " +
@@ -310,9 +327,8 @@ namespace WinFormsApp1
 
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
-                    if (searchType == "用戶ID")
+                    if (searchType == "用戶ID") // Use the parameter directly
                     {
-                        // 如果選擇用戶ID搜尋，嚴格檢查是否為數字
                         if (int.TryParse(keyword, out int userId))
                         {
                             sql += " AND user_id = @userId";
@@ -320,12 +336,7 @@ namespace WinFormsApp1
                         }
                         else
                         {
-                            // 如果不是有效的數字，不進行搜尋，可以考慮返回空結果或提示
-                            // 這裡選擇一個永遠不為真的條件，以返回空集
-                            sql += " AND 1 = 0"; 
-                            // 或者您希望提示用戶？可以在這裡加 MessageBox，但 await 會影響 UI 線程
-                            // MessageBox.Show("用戶ID必須是數字", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            // return; // 如果要提示並停止，需要重新考慮 async Task 的處理
+                            sql += " AND 1 = 0";
                         }
                     }
                     else // 用戶名搜尋 (模糊匹配)
@@ -365,11 +376,21 @@ namespace WinFormsApp1
         // 用戶搜尋按鈕點擊事件
         private async void btnUserSearch_Click(object sender, EventArgs e)
         {
+            // currentUserSearchKeyword = txtSearchUser.Text.Trim(); // 更新當前搜尋關鍵字 - Removed
             string searchTerm = txtSearchUser.Text.Trim();
             string searchType = cmbUserSearchType.SelectedItem?.ToString() ?? "用戶名"; // 預設用戶名搜尋
+            // currentUserSearchType = searchType; // 更新當前搜尋類型 (如果需要儲存以便刷新) - Removed
+            // currentUserPage = 1; // 重置到第一頁 - Removed
 
             // 呼叫修改後的 RefreshUserRecordsAsync 方法
             await RefreshUserRecordsAsync(keyword: searchTerm, searchType: searchType, applyPagination: false);
+        }
+
+        private async void btnRefreshUser_Click(object sender, EventArgs e)
+        {
+            // 直接使用當前的搜尋條件和頁碼刷新 - Reverted to original behavior
+            // This now just refreshes the list, effectively clearing any search filter
+            await RefreshUserRecordsAsync(applyPagination: false);
         }
 
         private async void btnComicSearch_Click(object sender, EventArgs e)
@@ -401,7 +422,7 @@ namespace WinFormsApp1
             await RefreshReserveRecordsAsync();
         }
 
-        private void dgvComic_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void dgvComic_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0 && dgvComic.Columns[e.ColumnIndex].Name == "Delete")
             {
@@ -418,6 +439,8 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             btnComicSearch_Click(null, null); // 重新查詢刷新
+                            WriteLogEntry("Delete Comic", $"刪除了漫畫ID：{comicId}"); // 寫入日誌
+                            await RefreshLogRecordsAsync(); // 刷新日誌列表
                         }
                         else
                         {
@@ -432,7 +455,7 @@ namespace WinFormsApp1
             }
         }
 
-        private void btnDeleteComic_Click(object sender, System.EventArgs e)
+        private async void btnDeleteComic_Click(object sender, System.EventArgs e)
         {
             if (dgvComic.CurrentRow == null)
             {
@@ -451,6 +474,8 @@ namespace WinFormsApp1
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         RefreshComicRecordsAsync(applyPagination: false); // 刷新時不使用分頁
+                        WriteLogEntry("Delete Comic", $"刪除了漫畫ID：{comicId}"); // 寫入日誌
+                        await RefreshLogRecordsAsync(); // 刷新日誌列表
                     }
                     else
                     {
@@ -487,7 +512,7 @@ namespace WinFormsApp1
         }
 
         // 借閱紀錄分頁操作按鈕事件
-        private void dgvBorrow_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void dgvBorrow_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
             var colName = dgvBorrow.Columns[e.ColumnIndex].Name;
@@ -509,13 +534,18 @@ namespace WinFormsApp1
                     };
                     DBHelper.ExecuteNonQuery(sql, p);
                     MessageBox.Show("已標記為已還書！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var borrowRow = dgvBorrow.Rows[e.RowIndex];
+                    string userName = borrowRow.Cells["用戶"].Value.ToString();
+                    string comicTitle = borrowRow.Cells["書名"].Value.ToString();
+                    WriteLogEntry("Return Comic", $"標記了借閱記錄 編號：{borrowId} (用戶：{userName}, 書名：{comicTitle}) 為已歸還"); // 寫入日誌
                     AdminForm_Load(null, null);
+                    await RefreshLogRecordsAsync(); // 刷新日誌列表
                 }
             }
         }
 
         // 預約紀錄分頁操作按鈕事件
-        private void dgvReserve_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void dgvReserve_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
             var colName = dgvReserve.Columns[e.ColumnIndex].Name;
@@ -537,7 +567,12 @@ namespace WinFormsApp1
                         };
                         DBHelper.ExecuteNonQuery(sql, p);
                         MessageBox.Show("已取消預約！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        var reserveRow = dgvReserve.Rows[e.RowIndex];
+                        string userName = reserveRow.Cells["用戶"].Value.ToString();
+                        string comicTitle = reserveRow.Cells["書名"].Value.ToString();
+                        WriteLogEntry("Cancel Reservation", $"取消了預約記錄 編號：{reserveId} (用戶：{userName}, 書名：{comicTitle})"); // 寫入日誌
                         AdminForm_Load(null, null);
+                        await RefreshLogRecordsAsync(); // 刷新日誌列表
                     }
                 }
                 catch (Exception ex)
@@ -728,12 +763,12 @@ namespace WinFormsApp1
         {
             lblPage.Text = $"第 {currentPage} 頁";
             btnPrev.Enabled = currentPage > 1;
-            btnNext.Enabled = dgv.Rows.Count == PageSize;
+            btnNext.Enabled = dgv.Rows.Count == PageSize; // 根據返回的記錄數判斷是否有下一頁
         }
 
         private void ResetSearchParameters()
         {
-            currentUserSearchKeyword = "";
+            // currentUserSearchKeyword = ""; // Removed as it's no longer used to store state
             currentComicSearchKeyword = "";
             currentBorrowSearchKeyword = "";
             currentReserveSearchKeyword = "";
@@ -899,7 +934,7 @@ namespace WinFormsApp1
         #endregion
 
         // 修改漫畫按鈕點擊事件處理器
-        private void btnEditComic_Click(object sender, EventArgs e)
+        private async void btnEditComic_Click(object sender, EventArgs e)
         {
             if (dgvComic.CurrentRow == null)
             {
@@ -946,6 +981,8 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("漫畫修改成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             RefreshComicRecordsAsync(); // 刷新漫畫列表
+                            WriteLogEntry("Edit Comic", $"修改了漫畫ID：{comicId} (書名：{title}) 的資訊"); // 寫入日誌
+                            await RefreshLogRecordsAsync(); // 刷新日誌列表
                         }
                         else
                         {
@@ -1038,7 +1075,7 @@ namespace WinFormsApp1
         }
 
         // 編輯用戶按鈕點擊事件
-        private void btnEditUser_Click(object sender, EventArgs e)
+        private async void btnEditUser_Click(object sender, EventArgs e)
         {
             if (dgvUser.CurrentRow == null)
             {
@@ -1079,6 +1116,8 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("用戶修改成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             RefreshUserRecordsAsync();
+                            WriteLogEntry("Edit User", $"修改了用戶ID：{userId} (原用戶名：{username}) 的資訊"); // 寫入日誌
+                            await RefreshLogRecordsAsync(); // 刷新日誌列表
                         }
                         else
                         {
@@ -1091,6 +1130,94 @@ namespace WinFormsApp1
                     }
                 }
             }
+        }
+
+        // 管理日誌搜尋按鈕點擊事件
+        private async void btnLogSearch_Click(object sender, EventArgs e)
+        {
+            string searchTerm = txtLogKeyword.Text.Trim();
+            string searchType = cmbLogSearchType.SelectedItem?.ToString() ?? "所有操作"; // 預設搜尋所有操作
+
+            await RefreshLogRecordsAsync(keyword: searchTerm, searchType: searchType);
+        }
+
+        // 刷新管理日誌
+        private async Task RefreshLogRecordsAsync(string keyword = null, string searchType = "所有操作")
+        {
+            try
+            {
+                string sql = "SELECT action_timestamp AS 時間, u.username AS 管理員, action_type AS 操作類型, action_details AS 操作詳情 FROM admin_log al JOIN user u ON al.admin_user_id = u.user_id WHERE 1=1";
+                var paramList = new List<MySqlParameter>();
+
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                     sql += " AND action_details LIKE @keyword";
+                     paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
+                }
+
+                if (searchType != "所有操作")
+                {
+                    // 將中文的操作類型轉換為數據庫中存儲的英文類型
+                    string dbActionType = searchType switch
+                    {
+                        "新增用戶" => "Add User",
+                        "編輯用戶" => "Edit User",
+                        "刪除用戶" => "Delete User",
+                        "新增漫畫" => "Add Comic",
+                        "編輯漫畫" => "Edit Comic",
+                        "刪除漫畫" => "Delete Comic",
+                        "歸還漫畫" => "Return Comic",
+                        "取消預約" => "Cancel Reservation",
+                        _ => searchType // 保留未知類型
+                    };
+                     sql += " AND action_type = @actionType";
+                     paramList.Add(new MySqlParameter("@actionType", dbActionType));
+                }
+
+                sql += " ORDER BY action_timestamp DESC"; // 最新日誌在前
+
+                var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
+
+                this.Invoke((MethodInvoker)delegate {
+                    dgvLog.DataSource = null;
+                    dgvLog.DataSource = dt;
+                    SetLogGridColumnWidths(); // 設定列寬方法（稍後實現）
+                    dgvLog.Refresh();
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"刷新管理日誌時發生錯誤：{ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // 寫入管理日誌
+        private void WriteLogEntry(string actionType, string actionDetails)
+        {
+            try
+            {
+                string sql = "INSERT INTO admin_log (admin_user_id, action_type, action_details) VALUES (@adminUserId, @actionType, @actionDetails)";
+                MySqlParameter[] parameters = {
+                    new MySqlParameter("@adminUserId", this.currentUserId),
+                    new MySqlParameter("@actionType", actionType),
+                    new MySqlParameter("@actionDetails", actionDetails)
+                };
+                DBHelper.ExecuteNonQuery(sql, parameters);
+            }
+            catch (Exception ex)
+            {
+                // 在這裡可以選擇記錄錯誤到檔案或控制台，避免因為日誌寫入失敗而影響主要操作
+                System.Diagnostics.Debug.WriteLine($"寫入日誌時發生錯誤: {ex.Message}");
+            }
+        }
+
+        // 設定日誌 DataGridView 列寬 (稍後在 AdminForm.Designer.cs 中實現)
+        private void SetLogGridColumnWidths()
+        {
+             if (dgvLog.Columns.Contains("時間")) { dgvLog.Columns["時間"].Width = 150; }
+             if (dgvLog.Columns.Contains("管理員")) { dgvLog.Columns["管理員"].Width = 100; }
+             if (dgvLog.Columns.Contains("操作類型")) { dgvLog.Columns["操作類型"].Width = 120; }
+             if (dgvLog.Columns.Contains("操作詳情")) { dgvLog.Columns["操作詳情"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; }
         }
     }
 } 

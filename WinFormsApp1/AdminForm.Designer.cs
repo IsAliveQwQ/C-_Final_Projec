@@ -37,10 +37,12 @@ namespace WinFormsApp1
             this.tabComic = new System.Windows.Forms.TabPage();
             this.tabBorrow = new System.Windows.Forms.TabPage();
             this.tabReserve = new System.Windows.Forms.TabPage();
+            this.tabLog = new System.Windows.Forms.TabPage();
             this.dgvUser = new System.Windows.Forms.DataGridView();
             this.dgvComic = new System.Windows.Forms.DataGridView();
             this.dgvBorrow = new System.Windows.Forms.DataGridView();
             this.dgvReserve = new System.Windows.Forms.DataGridView();
+            this.dgvLog = new System.Windows.Forms.DataGridView();
             this.panelComicSearch = new System.Windows.Forms.Panel();
             this.cmbComicSearchType = new System.Windows.Forms.ComboBox();
             this.txtComicKeyword = new System.Windows.Forms.TextBox();
@@ -110,6 +112,7 @@ namespace WinFormsApp1
             this.tabAdmin.Controls.Add(this.tabComic);
             this.tabAdmin.Controls.Add(this.tabBorrow);
             this.tabAdmin.Controls.Add(this.tabReserve);
+            this.tabAdmin.Controls.Add(this.tabLog);
             this.tabAdmin.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabAdmin.Name = "tabAdmin";
             //
@@ -179,6 +182,13 @@ namespace WinFormsApp1
             this.tabReserve.Controls.Add(this.dgvReserve);
             this.tabReserve.Controls.Add(this.panelReserveSearch);
             //
+            // tabLog
+            //
+            this.tabLog.Text = "管理日誌";
+            this.tabLog.Controls.Clear();
+            this.tabLog.Controls.Add(this.dgvLog);
+            this.tabLog.Controls.Add(this.panelLogSearch);
+            //
             // dgvUser
             //
             this.dgvUser.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -210,6 +220,15 @@ namespace WinFormsApp1
             this.dgvReserve.ReadOnly = true;
             this.dgvReserve.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dgvReserve.MultiSelect = false;
+            //
+            // dgvLog
+            //
+            this.dgvLog.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dgvLog.Name = "dgvLog";
+            this.dgvLog.AllowUserToAddRows = false;
+            this.dgvLog.ReadOnly = true;
+            this.dgvLog.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dgvLog.MultiSelect = false;
             //
             // panelComicSearch
             //
@@ -404,6 +423,52 @@ namespace WinFormsApp1
             this.btnRefreshReserve.Size = new System.Drawing.Size(90, 27);
             this.btnRefreshReserve.Text = "刷新資料";
             //
+            // panelLogSearch
+            //
+            this.panelLogSearch = new System.Windows.Forms.Panel();
+            this.txtLogKeyword = new System.Windows.Forms.TextBox();
+            this.cmbLogSearchType = new System.Windows.Forms.ComboBox();
+            this.btnLogSearch = new System.Windows.Forms.Button();
+            this.btnRefreshLog = new System.Windows.Forms.Button();
+            this.panelLogSearch.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelLogSearch.Height = 40;
+            this.panelLogSearch.Controls.Clear();
+            this.panelLogSearch.Controls.Add(this.txtLogKeyword);
+            this.panelLogSearch.Controls.Add(this.cmbLogSearchType);
+            this.panelLogSearch.Controls.Add(this.btnLogSearch);
+            this.panelLogSearch.Controls.Add(this.btnRefreshLog);
+            //
+            // txtLogKeyword
+            //
+            this.txtLogKeyword.Location = new System.Drawing.Point(10, 8);
+            this.txtLogKeyword.Name = "txtLogKeyword";
+            this.txtLogKeyword.Size = new System.Drawing.Size(180, 27);
+            //
+            // cmbLogSearchType
+            //
+            this.cmbLogSearchType.Location = new System.Drawing.Point(200, 8);
+            this.cmbLogSearchType.Name = "cmbLogSearchType";
+            this.cmbLogSearchType.Size = new System.Drawing.Size(120, 27);
+            this.cmbLogSearchType.Items.AddRange(new object[] { "所有操作", "新增用戶", "編輯用戶", "刪除用戶", "新增漫畫", "編輯漫畫", "刪除漫畫", "歸還漫畫", "取消預約" });
+            this.cmbLogSearchType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbLogSearchType.SelectedIndex = 0;
+            //
+            // btnLogSearch
+            //
+            this.btnLogSearch.Location = new System.Drawing.Point(330, 8);
+            this.btnLogSearch.Name = "btnLogSearch";
+            this.btnLogSearch.Size = new System.Drawing.Size(70, 27);
+            this.btnLogSearch.Text = "搜尋";
+            this.btnLogSearch.UseVisualStyleBackColor = true;
+            //
+            // btnRefreshLog
+            //
+            this.btnRefreshLog.Location = new System.Drawing.Point(410, 8);
+            this.btnRefreshLog.Name = "btnRefreshLog";
+            this.btnRefreshLog.Size = new System.Drawing.Size(90, 27);
+            this.btnRefreshLog.Text = "刷新日誌";
+            this.btnRefreshLog.UseVisualStyleBackColor = true;
+            //
             // AdminForm
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
@@ -420,10 +485,12 @@ namespace WinFormsApp1
         private System.Windows.Forms.TabPage tabComic;
         private System.Windows.Forms.TabPage tabBorrow;
         private System.Windows.Forms.TabPage tabReserve;
+        private System.Windows.Forms.TabPage tabLog;
         private System.Windows.Forms.DataGridView dgvUser;
         private System.Windows.Forms.DataGridView dgvComic;
         private System.Windows.Forms.DataGridView dgvBorrow;
         private System.Windows.Forms.DataGridView dgvReserve;
+        private System.Windows.Forms.DataGridView dgvLog;
         private System.Windows.Forms.Panel panelComicSearch;
         private System.Windows.Forms.ComboBox cmbComicSearchType;
         private System.Windows.Forms.TextBox txtComicKeyword;
@@ -470,5 +537,10 @@ namespace WinFormsApp1
         private System.Windows.Forms.Button btnComicPrev;
         private System.Windows.Forms.Button btnComicNext;
         private System.Windows.Forms.Label lblComicPage;
+        private System.Windows.Forms.Panel panelLogSearch;
+        private System.Windows.Forms.TextBox txtLogKeyword;
+        private System.Windows.Forms.ComboBox cmbLogSearchType;
+        private System.Windows.Forms.Button btnLogSearch;
+        private System.Windows.Forms.Button btnRefreshLog;
     }
 } 
