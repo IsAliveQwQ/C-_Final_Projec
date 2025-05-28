@@ -104,12 +104,70 @@ DEVELOPMENT_PLAN.md   # 開發計畫與進度
 
 ## 資料表設計（摘要）
 
-- `users`：用戶資料（含管理員標記）
-- `comics`：漫畫資料
-- `rentals`：借閱紀錄
-- `reservations`：預約紀錄（含 status 狀態，保留所有歷史）
+- `user`：用戶資料（含管理員標記、狀態、密碼雜湊）
+- `comic`：漫畫資料（含圖片、發售日、頁數、摘要等）
+- `borrow_record`：借閱紀錄（含借閱與歸還時間）
+- `admin_log`：管理員操作日誌
+- `user_favorites`：用戶收藏漫畫
 
-詳見 `database_init.sql`。
+詳見下方詳細結構。
+
+---
+
+### 資料表詳細結構
+
+#### `user`
+| 欄位名稱         | 型態                | 說明           |
+|------------------|---------------------|----------------|
+| user_id          | int                 | 用戶ID (PK)    |
+| username         | varchar(50)         | 用戶名稱       |
+| password_hash    | varchar(255)        | 密碼雜湊       |
+| role             | enum('user','admin')| 用戶角色       |
+| status           | varchar(50)         | 狀態           |
+
+#### `comic`
+| 欄位名稱     | 型態           | 說明         |
+|--------------|----------------|--------------|
+| comic_id     | int            | 漫畫ID (PK)  |
+| title        | varchar(100)   | 書名         |
+| isbn         | varchar(20)    | ISBN         |
+| author       | varchar(100)   | 作者         |
+| publisher    | varchar(100)   | 出版社       |
+| category     | varchar(50)    | 分類         |
+| image_path   | varchar(100)   | 圖片路徑     |
+| offer_date   | varchar(100)   | 發售日       |
+| pages        | varchar(100)   | 頁數         |
+| book_summary | varchar(100)   | 書籍摘要     |
+
+#### `borrow_record`
+| 欄位名稱     | 型態           | 說明         |
+|--------------|----------------|--------------|
+| borrow_id    | int            | 借閱紀錄ID (PK) |
+| user_id      | int            | 用戶ID (FK)  |
+| comic_id     | int            | 漫畫ID (FK)  |
+| borrow_date  | datetime       | 借閱時間     |
+| return_date  | datetime       | 歸還時間     |
+
+#### `admin_log`
+| 欄位名稱        | 型態            | 說明           |
+|-----------------|-----------------|----------------|
+| log_id          | int             | 日誌ID (PK)    |
+| admin_user_id   | int             | 管理員用戶ID   |
+| action_type     | varchar(50)     | 操作類型       |
+| action_details  | text            | 操作細節       |
+| action_timestamp| timestamp       | 操作時間       |
+
+#### `user_favorites`
+| 欄位名稱     | 型態           | 說明         |
+|--------------|----------------|--------------|
+| user_id      | int            | 用戶ID (FK)  |
+| comic_id     | int            | 漫畫ID (FK)  |
+
+> PK: 主鍵，FK: 外鍵
+
+---
+
+其餘資料表設計與欄位用途，請參考 `database_init.sql`。
 
 ---
 
