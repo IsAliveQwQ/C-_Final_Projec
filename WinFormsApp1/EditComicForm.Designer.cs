@@ -40,12 +40,15 @@ namespace WinFormsApp1
             this.txtCategory = new System.Windows.Forms.TextBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
+            this.pbComicImage = new System.Windows.Forms.PictureBox();
+            this.btnSelectImage = new System.Windows.Forms.Button();
+            ((System.ComponentModel.ISupportInitialize)(this.pbComicImage)).BeginInit();
             this.SuspendLayout();
             // 
             // lblISBN
             // 
             this.lblISBN.AutoSize = true;
-            this.lblISBN.Location = new System.Drawing.Point(20, 20);
+            this.lblISBN.Location = new System.Drawing.Point(300, 20);
             this.lblISBN.Name = "lblISBN";
             this.lblISBN.Size = new System.Drawing.Size(35, 20);
             this.lblISBN.TabIndex = 0;
@@ -53,7 +56,7 @@ namespace WinFormsApp1
             // 
             // txtISBN
             // 
-            this.txtISBN.Location = new System.Drawing.Point(80, 17);
+            this.txtISBN.Location = new System.Drawing.Point(360, 17);
             this.txtISBN.Name = "txtISBN";
             this.txtISBN.Size = new System.Drawing.Size(200, 27);
             this.txtISBN.TabIndex = 1;
@@ -61,7 +64,7 @@ namespace WinFormsApp1
             // lblTitle
             // 
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Location = new System.Drawing.Point(20, 60);
+            this.lblTitle.Location = new System.Drawing.Point(300, 60);
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(35, 20);
             this.lblTitle.TabIndex = 2;
@@ -69,7 +72,7 @@ namespace WinFormsApp1
             // 
             // txtTitle
             // 
-            this.txtTitle.Location = new System.Drawing.Point(80, 57);
+            this.txtTitle.Location = new System.Drawing.Point(360, 57);
             this.txtTitle.Name = "txtTitle";
             this.txtTitle.Size = new System.Drawing.Size(200, 27);
             this.txtTitle.TabIndex = 3;
@@ -77,7 +80,7 @@ namespace WinFormsApp1
             // lblAuthor
             // 
             this.lblAuthor.AutoSize = true;
-            this.lblAuthor.Location = new System.Drawing.Point(20, 100);
+            this.lblAuthor.Location = new System.Drawing.Point(300, 100);
             this.lblAuthor.Name = "lblAuthor";
             this.lblAuthor.Size = new System.Drawing.Size(35, 20);
             this.lblAuthor.TabIndex = 4;
@@ -85,7 +88,7 @@ namespace WinFormsApp1
             // 
             // txtAuthor
             // 
-            this.txtAuthor.Location = new System.Drawing.Point(80, 97);
+            this.txtAuthor.Location = new System.Drawing.Point(360, 97);
             this.txtAuthor.Name = "txtAuthor";
             this.txtAuthor.Size = new System.Drawing.Size(200, 27);
             this.txtAuthor.TabIndex = 5;
@@ -93,7 +96,7 @@ namespace WinFormsApp1
             // lblPublisher
             // 
             this.lblPublisher.AutoSize = true;
-            this.lblPublisher.Location = new System.Drawing.Point(20, 140);
+            this.lblPublisher.Location = new System.Drawing.Point(300, 140);
             this.lblPublisher.Name = "lblPublisher";
             this.lblPublisher.Size = new System.Drawing.Size(35, 20);
             this.lblPublisher.TabIndex = 6;
@@ -101,7 +104,7 @@ namespace WinFormsApp1
             // 
             // txtPublisher
             // 
-            this.txtPublisher.Location = new System.Drawing.Point(80, 137);
+            this.txtPublisher.Location = new System.Drawing.Point(360, 137);
             this.txtPublisher.Name = "txtPublisher";
             this.txtPublisher.Size = new System.Drawing.Size(200, 27);
             this.txtPublisher.TabIndex = 7;
@@ -109,7 +112,7 @@ namespace WinFormsApp1
             // lblCategory
             // 
             this.lblCategory.AutoSize = true;
-            this.lblCategory.Location = new System.Drawing.Point(20, 180);
+            this.lblCategory.Location = new System.Drawing.Point(300, 180);
             this.lblCategory.Name = "lblCategory";
             this.lblCategory.Size = new System.Drawing.Size(35, 20);
             this.lblCategory.TabIndex = 8;
@@ -117,14 +120,14 @@ namespace WinFormsApp1
             // 
             // txtCategory
             // 
-            this.txtCategory.Location = new System.Drawing.Point(80, 177);
+            this.txtCategory.Location = new System.Drawing.Point(360, 177);
             this.txtCategory.Name = "txtCategory";
             this.txtCategory.Size = new System.Drawing.Size(200, 27);
             this.txtCategory.TabIndex = 9;
             // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(80, 220);
+            this.btnSave.Location = new System.Drawing.Point(360, 220);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(90, 35);
             this.btnSave.TabIndex = 10;
@@ -134,19 +137,40 @@ namespace WinFormsApp1
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(190, 220);
+            this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.btnCancel.Location = new System.Drawing.Point(470, 220);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(90, 35);
             this.btnCancel.TabIndex = 11;
             this.btnCancel.Text = "取消";
             this.btnCancel.UseVisualStyleBackColor = true;
-            this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
+            // 
+            // pbComicImage
+            // 
+            this.pbComicImage.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pbComicImage.Location = new System.Drawing.Point(20, 20);
+            this.pbComicImage.Name = "pbComicImage";
+            this.pbComicImage.Size = new System.Drawing.Size(250, 369);
+            this.pbComicImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pbComicImage.TabIndex = 12;
+            this.pbComicImage.TabStop = false;
+            // 
+            // btnSelectImage
+            // 
+            this.btnSelectImage.Location = new System.Drawing.Point(80, 400);
+            this.btnSelectImage.Name = "btnSelectImage";
+            this.btnSelectImage.Size = new System.Drawing.Size(120, 30);
+            this.btnSelectImage.TabIndex = 13;
+            this.btnSelectImage.Text = "選擇圖片";
+            this.btnSelectImage.UseVisualStyleBackColor = true;
             // 
             // EditComicForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(320, 280);
+            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.btnSelectImage);
+            this.Controls.Add(this.pbComicImage);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.txtCategory);
@@ -164,7 +188,9 @@ namespace WinFormsApp1
             this.MinimizeBox = false;
             this.Name = "EditComicForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "修改漫畫";
+            this.Text = "編輯漫畫";
+            this.Load += new System.EventHandler(this.EditComicForm_Load);
+            ((System.ComponentModel.ISupportInitialize)(this.pbComicImage)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
         }
@@ -183,5 +209,7 @@ namespace WinFormsApp1
         private System.Windows.Forms.TextBox txtCategory;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnCancel;
+        private System.Windows.Forms.PictureBox pbComicImage;
+        private System.Windows.Forms.Button btnSelectImage;
     }
 } 

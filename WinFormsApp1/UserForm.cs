@@ -21,6 +21,8 @@ namespace WinFormsApp1
         public string ISBN { get; set; }
         public string 借閱狀態 { get; set; }
         public string 預約狀態 { get; set; }
+        // 新增圖片 URL 屬性
+        public string ImageUrl { get; set; }
     }
 
     public partial class UserForm : Form
@@ -57,7 +59,7 @@ namespace WinFormsApp1
         private const string MinioEndpoint = "bucket-production-63a9.up.railway.app";
         private const string MinioAccessKey = "dkF1y6M79nH7i8BTBfXuOmf6x6bNJ1rW";
         private const string MinioSecretKey = "Lq4ijpczUkbRznusbOAm0hOWiXLRBdQDb16fJQgbcPH3Q0Xn";
-        private const string BucketName = "comic-images"; // 您希望用於儲存漫畫圖片的儲存桶名稱
+        private const string BucketName = "comicimage"; // 您希望用於儲存漫畫圖片的儲存桶名稱
 
         private IMinioClient minioClient;
 
@@ -1690,6 +1692,7 @@ LEFT JOIN (
                     c.author AS 作者, 
                     c.publisher AS 出版社, 
                     c.category AS 分類,
+                    c.image_path AS 圖片URL,
                     CASE WHEN br.comic_id IS NOT NULL THEN '已被借' ELSE '未被借' END AS 借閱狀態,
                     CASE
                         WHEN br.comic_id IS NOT NULL THEN '不可預約'
@@ -2704,6 +2707,7 @@ LEFT JOIN (
                                 c.author AS 作者, 
                                 c.publisher AS 出版社, 
                                 c.category AS 分類,
+                                c.image_path AS 圖片URL,
                                 CASE WHEN br.comic_id IS NOT NULL THEN '已被借' ELSE '未被借' END AS 借閱狀態,
                                 CASE
                                     WHEN br.comic_id IS NOT NULL THEN '不可預約'
@@ -2735,7 +2739,9 @@ LEFT JOIN (
                         分類 = row["分類"].ToString(),
                         ISBN = row["ISBN"].ToString(),
                         借閱狀態 = row["借閱狀態"].ToString(),
-                        預約狀態 = row["預約狀態"].ToString()
+                        預約狀態 = row["預約狀態"].ToString(),
+                        // 設置圖片 URL
+                        ImageUrl = row["圖片URL"]?.ToString()
                     };
                 }
                 else

@@ -28,10 +28,10 @@ namespace WinFormsApp1
         /// </summary>
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.txtTitle = new System.Windows.Forms.TextBox();
             this.lblISBN = new System.Windows.Forms.Label();
             this.txtISBN = new System.Windows.Forms.TextBox();
+            this.lblTitle = new System.Windows.Forms.Label();
+            this.txtTitle = new System.Windows.Forms.TextBox();
             this.lblAuthor = new System.Windows.Forms.Label();
             this.txtAuthor = new System.Windows.Forms.TextBox();
             this.lblPublisher = new System.Windows.Forms.Label();
@@ -40,52 +40,55 @@ namespace WinFormsApp1
             this.txtCategory = new System.Windows.Forms.TextBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
+            this.pbComicImage = new System.Windows.Forms.PictureBox();
+            this.btnSelectImage = new System.Windows.Forms.Button();
+            ((System.ComponentModel.ISupportInitialize)(this.pbComicImage)).BeginInit();
             this.SuspendLayout();
-            // 
-            // lblTitle
-            // 
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Location = new System.Drawing.Point(30, 30);
-            this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(43, 20);
-            this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "書名：";
-            // 
-            // txtTitle
-            // 
-            this.txtTitle.Location = new System.Drawing.Point(80, 27);
-            this.txtTitle.Name = "txtTitle";
-            this.txtTitle.Size = new System.Drawing.Size(200, 27);
-            this.txtTitle.TabIndex = 1;
             // 
             // lblISBN
             // 
             this.lblISBN.AutoSize = true;
-            this.lblISBN.Location = new System.Drawing.Point(30, 70);
+            this.lblISBN.Location = new System.Drawing.Point(300, 20);
             this.lblISBN.Name = "lblISBN";
-            this.lblISBN.Size = new System.Drawing.Size(54, 20);
-            this.lblISBN.TabIndex = 2;
-            this.lblISBN.Text = "ISBN：";
+            this.lblISBN.Size = new System.Drawing.Size(35, 20);
+            this.lblISBN.TabIndex = 0;
+            this.lblISBN.Text = "ISBN";
             // 
             // txtISBN
             // 
-            this.txtISBN.Location = new System.Drawing.Point(80, 67);
+            this.txtISBN.Location = new System.Drawing.Point(360, 17);
             this.txtISBN.Name = "txtISBN";
             this.txtISBN.Size = new System.Drawing.Size(200, 27);
-            this.txtISBN.TabIndex = 3;
+            this.txtISBN.TabIndex = 1;
+            // 
+            // lblTitle
+            // 
+            this.lblTitle.AutoSize = true;
+            this.lblTitle.Location = new System.Drawing.Point(300, 60);
+            this.lblTitle.Name = "lblTitle";
+            this.lblTitle.Size = new System.Drawing.Size(35, 20);
+            this.lblTitle.TabIndex = 2;
+            this.lblTitle.Text = "書名";
+            // 
+            // txtTitle
+            // 
+            this.txtTitle.Location = new System.Drawing.Point(360, 57);
+            this.txtTitle.Name = "txtTitle";
+            this.txtTitle.Size = new System.Drawing.Size(200, 27);
+            this.txtTitle.TabIndex = 3;
             // 
             // lblAuthor
             // 
             this.lblAuthor.AutoSize = true;
-            this.lblAuthor.Location = new System.Drawing.Point(30, 110);
+            this.lblAuthor.Location = new System.Drawing.Point(300, 100);
             this.lblAuthor.Name = "lblAuthor";
-            this.lblAuthor.Size = new System.Drawing.Size(43, 20);
+            this.lblAuthor.Size = new System.Drawing.Size(35, 20);
             this.lblAuthor.TabIndex = 4;
-            this.lblAuthor.Text = "作者：";
+            this.lblAuthor.Text = "作者";
             // 
             // txtAuthor
             // 
-            this.txtAuthor.Location = new System.Drawing.Point(80, 107);
+            this.txtAuthor.Location = new System.Drawing.Point(360, 97);
             this.txtAuthor.Name = "txtAuthor";
             this.txtAuthor.Size = new System.Drawing.Size(200, 27);
             this.txtAuthor.TabIndex = 5;
@@ -93,15 +96,15 @@ namespace WinFormsApp1
             // lblPublisher
             // 
             this.lblPublisher.AutoSize = true;
-            this.lblPublisher.Location = new System.Drawing.Point(30, 150);
+            this.lblPublisher.Location = new System.Drawing.Point(300, 140);
             this.lblPublisher.Name = "lblPublisher";
-            this.lblPublisher.Size = new System.Drawing.Size(58, 20);
+            this.lblPublisher.Size = new System.Drawing.Size(35, 20);
             this.lblPublisher.TabIndex = 6;
-            this.lblPublisher.Text = "出版社：";
+            this.lblPublisher.Text = "出版社";
             // 
             // txtPublisher
             // 
-            this.txtPublisher.Location = new System.Drawing.Point(80, 147);
+            this.txtPublisher.Location = new System.Drawing.Point(360, 137);
             this.txtPublisher.Name = "txtPublisher";
             this.txtPublisher.Size = new System.Drawing.Size(200, 27);
             this.txtPublisher.TabIndex = 7;
@@ -109,22 +112,22 @@ namespace WinFormsApp1
             // lblCategory
             // 
             this.lblCategory.AutoSize = true;
-            this.lblCategory.Location = new System.Drawing.Point(30, 190);
+            this.lblCategory.Location = new System.Drawing.Point(300, 180);
             this.lblCategory.Name = "lblCategory";
-            this.lblCategory.Size = new System.Drawing.Size(58, 20);
+            this.lblCategory.Size = new System.Drawing.Size(35, 20);
             this.lblCategory.TabIndex = 8;
-            this.lblCategory.Text = "分類：";
+            this.lblCategory.Text = "分類";
             // 
             // txtCategory
             // 
-            this.txtCategory.Location = new System.Drawing.Point(80, 187);
+            this.txtCategory.Location = new System.Drawing.Point(360, 177);
             this.txtCategory.Name = "txtCategory";
             this.txtCategory.Size = new System.Drawing.Size(200, 27);
             this.txtCategory.TabIndex = 9;
             // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(80, 230);
+            this.btnSave.Location = new System.Drawing.Point(360, 220);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(90, 35);
             this.btnSave.TabIndex = 10;
@@ -134,7 +137,8 @@ namespace WinFormsApp1
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(190, 230);
+            this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.btnCancel.Location = new System.Drawing.Point(470, 220);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(90, 35);
             this.btnCancel.TabIndex = 11;
@@ -142,11 +146,32 @@ namespace WinFormsApp1
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
+            // pbComicImage
+            // 
+            this.pbComicImage.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pbComicImage.Location = new System.Drawing.Point(20, 20);
+            this.pbComicImage.Name = "pbComicImage";
+            this.pbComicImage.Size = new System.Drawing.Size(250, 369);
+            this.pbComicImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pbComicImage.TabIndex = 12;
+            this.pbComicImage.TabStop = false;
+            // 
+            // btnSelectImage
+            // 
+            this.btnSelectImage.Location = new System.Drawing.Point(80, 400);
+            this.btnSelectImage.Name = "btnSelectImage";
+            this.btnSelectImage.Size = new System.Drawing.Size(120, 30);
+            this.btnSelectImage.TabIndex = 13;
+            this.btnSelectImage.Text = "選擇圖片";
+            this.btnSelectImage.UseVisualStyleBackColor = true;
+            // 
             // AddComicForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(320, 300);
+            this.ClientSize = new System.Drawing.Size(600, 450);
+            this.Controls.Add(this.btnSelectImage);
+            this.Controls.Add(this.pbComicImage);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.txtCategory);
@@ -155,13 +180,17 @@ namespace WinFormsApp1
             this.Controls.Add(this.lblPublisher);
             this.Controls.Add(this.txtAuthor);
             this.Controls.Add(this.lblAuthor);
-            this.Controls.Add(this.txtISBN);
-            this.Controls.Add(this.lblISBN);
             this.Controls.Add(this.txtTitle);
             this.Controls.Add(this.lblTitle);
+            this.Controls.Add(this.txtISBN);
+            this.Controls.Add(this.lblISBN);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
             this.Name = "AddComicForm";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "新增漫畫";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            ((System.ComponentModel.ISupportInitialize)(this.pbComicImage)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -169,10 +198,10 @@ namespace WinFormsApp1
 
         #endregion
 
-        private System.Windows.Forms.Label lblTitle;
-        private System.Windows.Forms.TextBox txtTitle;
         private System.Windows.Forms.Label lblISBN;
         private System.Windows.Forms.TextBox txtISBN;
+        private System.Windows.Forms.Label lblTitle;
+        private System.Windows.Forms.TextBox txtTitle;
         private System.Windows.Forms.Label lblAuthor;
         private System.Windows.Forms.TextBox txtAuthor;
         private System.Windows.Forms.Label lblPublisher;
@@ -181,5 +210,7 @@ namespace WinFormsApp1
         private System.Windows.Forms.TextBox txtCategory;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnCancel;
+        private System.Windows.Forms.PictureBox pbComicImage;
+        private System.Windows.Forms.Button btnSelectImage;
     }
 } 

@@ -23,7 +23,6 @@ namespace WinFormsApp1
         private int currentLogPage = 1; // 新增：管理日誌分頁
 
         // 搜尋參數
-        private string currentUserSearchKeyword = "";
         private string currentComicSearchKeyword = "";
         private string currentComicSearchType = "書號";
         private string currentBorrowSearchKeyword = "";
@@ -157,16 +156,18 @@ namespace WinFormsApp1
                     string author = addComicForm.ComicAuthor;
                     string publisher = addComicForm.ComicPublisher;
                     string category = addComicForm.ComicCategory;
+                    string imageUrl = addComicForm.ImageUrl;
                     try
                     {
-                        string sql = "INSERT INTO comic (title, isbn, author, publisher, category) " +
-                                     "VALUES (@title, @isbn, @author, @publisher, @category)";
+                        string sql = "INSERT INTO comic (title, isbn, author, publisher, category, image_path) " +
+                                     "VALUES (@title, @isbn, @author, @publisher, @category, @image_path)";
                         MySqlParameter[] parameters = {
                             new MySqlParameter("@title", title),
                             new MySqlParameter("@isbn", isbn),
                             new MySqlParameter("@author", author),
                             new MySqlParameter("@publisher", publisher),
-                            new MySqlParameter("@category", category)
+                            new MySqlParameter("@category", category),
+                            new MySqlParameter("@image_path", imageUrl ?? (object)DBNull.Value)
                         };
                         int rowsAffected = DBHelper.ExecuteNonQuery(sql, parameters);
                         if (rowsAffected > 0)
@@ -1063,11 +1064,13 @@ namespace WinFormsApp1
             string author = dgvComic.CurrentRow.Cells["作者"].Value.ToString();
             string publisher = dgvComic.CurrentRow.Cells["出版社"].Value.ToString();
             string category = dgvComic.CurrentRow.Cells["分類"].Value.ToString();
+            string imagePath = dgvComic.CurrentRow.Cells["圖片"].Value?.ToString();
+
             // 查詢原始資料
-            string sqlQuery = "SELECT isbn, title, author, publisher, category FROM comic WHERE comic_id = @cid";
+            string sqlQuery = "SELECT isbn, title, author, publisher, category, image_path FROM comic WHERE comic_id = @cid";
             MySqlParameter[] pQuery = { new MySqlParameter("@cid", comicId) };
             var dt = DBHelper.ExecuteQuery(sqlQuery, pQuery);
-            string oldIsbn = isbn, oldTitle = title, oldAuthor = author, oldPublisher = publisher, oldCategory = category;
+            string oldIsbn = isbn, oldTitle = title, oldAuthor = author, oldPublisher = publisher, oldCategory = category, oldImagePath = imagePath;
             if (dt.Rows.Count > 0)
             {
                 var row = dt.Rows[0];
@@ -1076,8 +1079,10 @@ namespace WinFormsApp1
                 oldAuthor = row["author"].ToString();
                 oldPublisher = row["publisher"].ToString();
                 oldCategory = row["category"].ToString();
+                oldImagePath = row["image_path"]?.ToString();
             }
-            using (EditComicForm editComicForm = new EditComicForm(comicId, isbn, title, author, publisher, category))
+
+            using (EditComicForm editComicForm = new EditComicForm(comicId, isbn, title, author, publisher, category, oldImagePath))
             {
                 if (editComicForm.ShowDialog() == DialogResult.OK)
                 {
@@ -1088,7 +1093,8 @@ namespace WinFormsApp1
                                          title = @title, 
                                          author = @author, 
                                          publisher = @publisher, 
-                                         category = @category 
+                                         category = @category,
+                                         image_path = @image_path
                                      WHERE comic_id = @comic_id";
                         MySqlParameter[] parameters = {
                             new MySqlParameter("@comic_id", comicId),
@@ -1096,7 +1102,8 @@ namespace WinFormsApp1
                             new MySqlParameter("@title", editComicForm.ComicTitle),
                             new MySqlParameter("@author", editComicForm.ComicAuthor),
                             new MySqlParameter("@publisher", editComicForm.ComicPublisher),
-                            new MySqlParameter("@category", editComicForm.ComicCategory)
+                            new MySqlParameter("@category", editComicForm.ComicCategory),
+                            new MySqlParameter("@image_path", editComicForm.ImageUrl ?? (object)DBNull.Value)
                         };
                         int rowsAffected = DBHelper.ExecuteNonQuery(sql, parameters);
                         if (rowsAffected > 0)
@@ -1115,6 +1122,8 @@ namespace WinFormsApp1
                                 changes.Add($"出版社 由 {oldPublisher} 改為 {editComicForm.ComicPublisher}");
                             if (oldCategory != editComicForm.ComicCategory)
                                 changes.Add($"分類 由 {oldCategory} 改為 {editComicForm.ComicCategory}");
+                            if (oldImagePath != editComicForm.ImageUrl)
+                                changes.Add("更新了漫畫圖片");
                             if (changes.Count > 0)
                                 WriteLogEntry("編輯漫畫", string.Join(", ", changes));
                             await RefreshLogRecordsAsync();
@@ -1157,7 +1166,7 @@ namespace WinFormsApp1
             try
             {
                 string sql = @"SELECT comic_id AS 書號, title AS 書名, isbn AS ISBN,
-                             author AS 作者, publisher AS 出版社, category AS 分類 
+                             author AS 作者, publisher AS 出版社, category AS 分類, image_path AS 圖片 
                              FROM comic WHERE 1=1";
                 var paramList = new List<MySqlParameter>();
                 if (!string.IsNullOrWhiteSpace(keyword))
