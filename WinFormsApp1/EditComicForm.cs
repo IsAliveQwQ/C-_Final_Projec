@@ -38,6 +38,9 @@ namespace WinFormsApp1
             };
 
             this.btnSelectImage.Click += BtnSelectImage_Click;
+            // 為 txtOfferDate 添加 Enter 和 MouseClick 事件處理程式
+            this.txtOfferDate.Enter += TxtOfferDate_Enter;
+            this.txtOfferDate.MouseClick += TxtOfferDate_MouseClick;
 
             // 載入現有資料到控制項
             txtISBN.Text = isbn;
@@ -220,6 +223,18 @@ namespace WinFormsApp1
         private async void EditComicForm_Load(object sender, EventArgs e)
         {
             await LoadComicImageAsync();
+        }
+
+        // txtOfferDate 的 Enter 事件處理程式
+        private void TxtOfferDate_Enter(object sender, EventArgs e)
+        {
+            ((MaskedTextBox)sender).SelectionStart = 0;
+        }
+
+        // txtOfferDate 的 MouseClick 事件處理程式
+        private void TxtOfferDate_MouseClick(object sender, MouseEventArgs e)
+        {
+            ((MaskedTextBox)sender).SelectionStart = 0;
         }
     }
 } 

@@ -21,7 +21,7 @@ namespace WinFormsApp1
         public AddComicForm()
         {
             InitializeComponent();
-            this.Text = "新增/編輯漫畫";
+            this.Text = "新增漫畫";
             InitializeMinioClient();
 
             openFileDialog = new OpenFileDialog
@@ -31,6 +31,8 @@ namespace WinFormsApp1
             };
 
             this.btnSelectImage.Click += BtnSelectImage_Click;
+            this.txtOfferDate.Enter += TxtOfferDate_Enter;
+            this.txtOfferDate.MouseClick += TxtOfferDate_MouseClick;
         }
 
         private void InitializeMinioClient()
@@ -129,6 +131,16 @@ namespace WinFormsApp1
                 ImagePath = openFileDialog.FileName;
                 pbComicImage.Image = Image.FromFile(ImagePath);
             }
+        }
+
+        private void TxtOfferDate_Enter(object sender, EventArgs e)
+        {
+            ((MaskedTextBox)sender).SelectionStart = 0;
+        }
+
+        private void TxtOfferDate_MouseClick(object sender, MouseEventArgs e)
+        {
+            ((MaskedTextBox)sender).SelectionStart = 0;
         }
     }
 } 

@@ -43,7 +43,7 @@ namespace WinFormsApp1
             this.pbComicImage = new System.Windows.Forms.PictureBox();
             this.btnSelectImage = new System.Windows.Forms.Button();
             this.lblOfferDate = new System.Windows.Forms.Label();
-            this.txtOfferDate = new System.Windows.Forms.TextBox();
+            this.txtOfferDate = new System.Windows.Forms.MaskedTextBox();
             this.lblPages = new System.Windows.Forms.Label();
             this.txtPages = new System.Windows.Forms.TextBox();
             this.lblBookSummary = new System.Windows.Forms.Label();
@@ -143,9 +143,11 @@ namespace WinFormsApp1
             // txtOfferDate
             // 
             this.txtOfferDate.Location = new System.Drawing.Point(360, 217);
+            this.txtOfferDate.Mask = "0000/00/00";
             this.txtOfferDate.Name = "txtOfferDate";
-            this.txtOfferDate.Size = new System.Drawing.Size(200, 27);
+            this.txtOfferDate.Size = new System.Drawing.Size(200, 30);
             this.txtOfferDate.TabIndex = 15;
+            this.txtOfferDate.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             // 
             // lblPages
             // 
@@ -175,13 +177,14 @@ namespace WinFormsApp1
             // txtBookSummary
             // 
             this.txtBookSummary.Location = new System.Drawing.Point(360, 297);
+            this.txtBookSummary.Multiline = true;
             this.txtBookSummary.Name = "txtBookSummary";
-            this.txtBookSummary.Size = new System.Drawing.Size(200, 27);
+            this.txtBookSummary.Size = new System.Drawing.Size(200, 100);
             this.txtBookSummary.TabIndex = 19;
             // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(360, 340);
+            this.btnSave.Location = new System.Drawing.Point(360, 410);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(90, 35);
             this.btnSave.TabIndex = 10;
@@ -192,7 +195,7 @@ namespace WinFormsApp1
             // btnCancel
             // 
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(470, 340);
+            this.btnCancel.Location = new System.Drawing.Point(470, 410);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(90, 35);
             this.btnCancel.TabIndex = 11;
@@ -223,7 +226,7 @@ namespace WinFormsApp1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(600, 400);
+            this.ClientSize = new System.Drawing.Size(600, 460);
             this.Controls.Add(this.txtBookSummary);
             this.Controls.Add(this.lblBookSummary);
             this.Controls.Add(this.txtPages);
@@ -273,7 +276,7 @@ namespace WinFormsApp1
         private System.Windows.Forms.PictureBox pbComicImage;
         private System.Windows.Forms.Button btnSelectImage;
         private System.Windows.Forms.Label lblOfferDate;
-        private System.Windows.Forms.TextBox txtOfferDate;
+        private System.Windows.Forms.MaskedTextBox txtOfferDate;
         private System.Windows.Forms.Label lblPages;
         private System.Windows.Forms.TextBox txtPages;
         private System.Windows.Forms.Label lblBookSummary;

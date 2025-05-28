@@ -43,7 +43,7 @@ namespace WinFormsApp1
             this.pbComicImage = new System.Windows.Forms.PictureBox();
             this.btnSelectImage = new System.Windows.Forms.Button();
             this.lblOfferDate = new System.Windows.Forms.Label();
-            this.txtOfferDate = new System.Windows.Forms.TextBox();
+            this.txtOfferDate = new System.Windows.Forms.MaskedTextBox();
             this.lblPages = new System.Windows.Forms.Label();
             this.txtPages = new System.Windows.Forms.TextBox();
             this.lblBookSummary = new System.Windows.Forms.Label();
@@ -143,9 +143,11 @@ namespace WinFormsApp1
             // txtOfferDate
             // 
             this.txtOfferDate.Location = new System.Drawing.Point(360, 217);
+            this.txtOfferDate.Mask = "0000/00/00";
             this.txtOfferDate.Name = "txtOfferDate";
-            this.txtOfferDate.Size = new System.Drawing.Size(200, 27);
+            this.txtOfferDate.Size = new System.Drawing.Size(200, 30);
             this.txtOfferDate.TabIndex = 15;
+            this.txtOfferDate.Font = new System.Drawing.Font("Microsoft JhengHei UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             // 
             // lblPages
             // 
@@ -274,7 +276,7 @@ namespace WinFormsApp1
         private System.Windows.Forms.PictureBox pbComicImage;
         private System.Windows.Forms.Button btnSelectImage;
         private System.Windows.Forms.Label lblOfferDate;
-        private System.Windows.Forms.TextBox txtOfferDate;
+        private System.Windows.Forms.MaskedTextBox txtOfferDate;
         private System.Windows.Forms.Label lblPages;
         private System.Windows.Forms.TextBox txtPages;
         private System.Windows.Forms.Label lblBookSummary;
