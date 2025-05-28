@@ -157,17 +157,24 @@ namespace WinFormsApp1
                     string publisher = addComicForm.ComicPublisher;
                     string category = addComicForm.ComicCategory;
                     string imageUrl = addComicForm.ImageUrl;
+                    string offerDate = addComicForm.OfferDate; // 獲取發售日
+                    string pages = addComicForm.Pages; // 獲取頁數
+                    string bookSummary = addComicForm.BookSummary; // 獲取摘要
+
                     try
                     {
-                        string sql = "INSERT INTO comic (title, isbn, author, publisher, category, image_path) " +
-                                     "VALUES (@title, @isbn, @author, @publisher, @category, @image_path)";
+                        string sql = "INSERT INTO comic (title, isbn, author, publisher, category, image_path, offer_date, pages, book_summary) " + // 添加新欄位
+                                     "VALUES (@title, @isbn, @author, @publisher, @category, @image_path, @offer_date, @pages, @book_summary)"; // 添加新參數
                         MySqlParameter[] parameters = {
                             new MySqlParameter("@title", title),
                             new MySqlParameter("@isbn", isbn),
                             new MySqlParameter("@author", author),
                             new MySqlParameter("@publisher", publisher),
                             new MySqlParameter("@category", category),
-                            new MySqlParameter("@image_path", imageUrl ?? (object)DBNull.Value)
+                            new MySqlParameter("@image_path", imageUrl ?? (object)DBNull.Value),
+                            new MySqlParameter("@offer_date", offerDate ?? (object)DBNull.Value), // 添加發售日參數
+                            new MySqlParameter("@pages", pages ?? (object)DBNull.Value), // 添加頁數參數
+                            new MySqlParameter("@book_summary", bookSummary ?? (object)DBNull.Value) // 添加摘要參數
                         };
                         int rowsAffected = DBHelper.ExecuteNonQuery(sql, parameters);
                         if (rowsAffected > 0)
@@ -499,14 +506,22 @@ namespace WinFormsApp1
                 try
                 {
                     // 查詢原始資料
-                    string sqlQuery = "SELECT title FROM comic WHERE comic_id = @cid";
+                    string sqlQuery = "SELECT isbn, title, author, publisher, category, image_path, offer_date, pages, book_summary FROM comic WHERE comic_id = @cid";
                     MySqlParameter[] pQuery = { new MySqlParameter("@cid", comicId) };
                     var dt = DBHelper.ExecuteQuery(sqlQuery, pQuery);
-                    string deletedTitle = "";
+                    string oldIsbn = "", oldTitle = "", oldAuthor = "", oldPublisher = "", oldCategory = "", oldImagePath = "", oldOfferDate = null, oldPages = null, oldBookSummary = null;
                     if (dt.Rows.Count > 0)
                     {
                         var row = dt.Rows[0];
-                        deletedTitle = row["title"].ToString();
+                        oldIsbn = row["isbn"].ToString();
+                        oldTitle = row["title"].ToString();
+                        oldAuthor = row["author"].ToString();
+                        oldPublisher = row["publisher"].ToString();
+                        oldCategory = row["category"].ToString();
+                        oldImagePath = row["image_path"]?.ToString();
+                        oldOfferDate = row["offer_date"]?.ToString(); // 獲取舊的發售日
+                        oldPages = row["pages"]?.ToString(); // 獲取舊的頁數
+                        oldBookSummary = row["book_summary"]?.ToString(); // 獲取舊的摘要
                     }
                     string sql = "DELETE FROM comic WHERE comic_id = @cid";
                     MySqlParameter[] p = { new MySqlParameter("@cid", comicId) };
@@ -514,7 +529,7 @@ namespace WinFormsApp1
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        WriteLogEntry("刪除漫畫", $"{deletedTitle}漫畫被刪除");
+                        WriteLogEntry("刪除漫畫", $"{oldTitle}漫畫被刪除");
                         await RefreshLogRecordsAsync();
                         RefreshComicRecordsAsync();
                     }
@@ -1011,18 +1026,12 @@ namespace WinFormsApp1
         }
         private void SetComicGridColumnWidths()
         {
-            // 設置前三欄的順序和寬度
+            // 設置固定寬度欄位
             if (dgvComic.Columns.Contains("書號"))
             {
                 dgvComic.Columns["書號"].Width = 80;
                 dgvComic.Columns["書號"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
                 dgvComic.Columns["書號"].DisplayIndex = 0;
-            }
-            if (dgvComic.Columns.Contains("書名"))
-            {
-                dgvComic.Columns["書名"].Width = 250;
-                dgvComic.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-                dgvComic.Columns["書名"].DisplayIndex = 1;
             }
             if (dgvComic.Columns.Contains("ISBN"))
             {
@@ -1031,7 +1040,12 @@ namespace WinFormsApp1
                 dgvComic.Columns["ISBN"].DisplayIndex = 2;
             }
 
-            // 設置其他欄位的順序和寬度
+            // 設置自動填滿欄位
+            if (dgvComic.Columns.Contains("書名"))
+            {
+                dgvComic.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                dgvComic.Columns["書名"].DisplayIndex = 1;
+            }
             if (dgvComic.Columns.Contains("作者"))
             {
                 dgvComic.Columns["作者"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
@@ -1064,13 +1078,12 @@ namespace WinFormsApp1
             string author = dgvComic.CurrentRow.Cells["作者"].Value.ToString();
             string publisher = dgvComic.CurrentRow.Cells["出版社"].Value.ToString();
             string category = dgvComic.CurrentRow.Cells["分類"].Value.ToString();
-            string imagePath = dgvComic.CurrentRow.Cells["圖片"].Value?.ToString();
 
             // 查詢原始資料
-            string sqlQuery = "SELECT isbn, title, author, publisher, category, image_path FROM comic WHERE comic_id = @cid";
+            string sqlQuery = "SELECT isbn, title, author, publisher, category, image_path, offer_date, pages, book_summary FROM comic WHERE comic_id = @cid";
             MySqlParameter[] pQuery = { new MySqlParameter("@cid", comicId) };
             var dt = DBHelper.ExecuteQuery(sqlQuery, pQuery);
-            string oldIsbn = isbn, oldTitle = title, oldAuthor = author, oldPublisher = publisher, oldCategory = category, oldImagePath = imagePath;
+            string oldIsbn = isbn, oldTitle = title, oldAuthor = author, oldPublisher = publisher, oldCategory = category, oldImagePath = null, oldOfferDate = null, oldPages = null, oldBookSummary = null;
             if (dt.Rows.Count > 0)
             {
                 var row = dt.Rows[0];
@@ -1080,9 +1093,12 @@ namespace WinFormsApp1
                 oldPublisher = row["publisher"].ToString();
                 oldCategory = row["category"].ToString();
                 oldImagePath = row["image_path"]?.ToString();
+                oldOfferDate = row["offer_date"]?.ToString(); // 獲取舊的發售日
+                oldPages = row["pages"]?.ToString(); // 獲取舊的頁數
+                oldBookSummary = row["book_summary"]?.ToString(); // 獲取舊的摘要
             }
 
-            using (EditComicForm editComicForm = new EditComicForm(comicId, isbn, title, author, publisher, category, oldImagePath))
+            using (EditComicForm editComicForm = new EditComicForm(comicId, isbn, title, author, publisher, category, oldImagePath, oldOfferDate, oldPages, oldBookSummary))
             {
                 if (editComicForm.ShowDialog() == DialogResult.OK)
                 {
@@ -1094,7 +1110,10 @@ namespace WinFormsApp1
                                          author = @author, 
                                          publisher = @publisher, 
                                          category = @category,
-                                         image_path = @image_path
+                                         image_path = @image_path,
+                                         offer_date = @offer_date,
+                                         pages = @pages,
+                                         book_summary = @book_summary
                                      WHERE comic_id = @comic_id";
                         MySqlParameter[] parameters = {
                             new MySqlParameter("@comic_id", comicId),
@@ -1103,7 +1122,10 @@ namespace WinFormsApp1
                             new MySqlParameter("@author", editComicForm.ComicAuthor),
                             new MySqlParameter("@publisher", editComicForm.ComicPublisher),
                             new MySqlParameter("@category", editComicForm.ComicCategory),
-                            new MySqlParameter("@image_path", editComicForm.ImageUrl ?? (object)DBNull.Value)
+                            new MySqlParameter("@image_path", editComicForm.ImageUrl ?? (object)DBNull.Value),
+                            new MySqlParameter("@offer_date", editComicForm.OfferDate ?? (object)DBNull.Value), // 添加發售日參數
+                            new MySqlParameter("@pages", editComicForm.Pages ?? (object)DBNull.Value), // 添加頁數參數
+                            new MySqlParameter("@book_summary", editComicForm.BookSummary ?? (object)DBNull.Value) // 添加摘要參數
                         };
                         int rowsAffected = DBHelper.ExecuteNonQuery(sql, parameters);
                         if (rowsAffected > 0)
@@ -1124,6 +1146,12 @@ namespace WinFormsApp1
                                 changes.Add($"分類 由 {oldCategory} 改為 {editComicForm.ComicCategory}");
                             if (oldImagePath != editComicForm.ImageUrl)
                                 changes.Add("更新了漫畫圖片");
+                            if (oldOfferDate != editComicForm.OfferDate)
+                                changes.Add($"發售日 由 {oldOfferDate} 改為 {editComicForm.OfferDate}");
+                            if (oldPages != editComicForm.Pages)
+                                changes.Add($"頁數 由 {oldPages} 改為 {editComicForm.Pages}");
+                            if (oldBookSummary != editComicForm.BookSummary)
+                                changes.Add($"摘要 由 {oldBookSummary} 改為 {editComicForm.BookSummary}");
                             if (changes.Count > 0)
                                 WriteLogEntry("編輯漫畫", string.Join(", ", changes));
                             await RefreshLogRecordsAsync();
@@ -1166,7 +1194,7 @@ namespace WinFormsApp1
             try
             {
                 string sql = @"SELECT comic_id AS 書號, title AS 書名, isbn AS ISBN,
-                             author AS 作者, publisher AS 出版社, category AS 分類, image_path AS 圖片 
+                             author AS 作者, publisher AS 出版社, category AS 分類
                              FROM comic WHERE 1=1";
                 var paramList = new List<MySqlParameter>();
                 if (!string.IsNullOrWhiteSpace(keyword))

@@ -56,6 +56,9 @@ namespace WinFormsApp1
         public string ComicCategory { get; private set; }
         public string ImagePath { get; private set; }
         public string ImageUrl { get; private set; }
+        public string OfferDate { get; private set; }
+        public string Pages { get; private set; }
+        public string BookSummary { get; private set; }
 
         private async void btnSave_Click(object sender, EventArgs e)
         {
@@ -64,6 +67,9 @@ namespace WinFormsApp1
             ComicAuthor = txtAuthor.Text;
             ComicPublisher = txtPublisher.Text;
             ComicCategory = txtCategory.Text;
+            OfferDate = txtOfferDate.Text;
+            Pages = txtPages.Text;
+            BookSummary = txtBookSummary.Text;
 
             if (!long.TryParse(ComicISBN, out _))
             {

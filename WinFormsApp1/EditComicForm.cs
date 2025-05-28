@@ -22,7 +22,7 @@ namespace WinFormsApp1
         private string currentImageUrl;
         private OpenFileDialog openFileDialog;
 
-        public EditComicForm(int comicId, string isbn, string title, string author, string publisher, string category, string imageUrl = null)
+        public EditComicForm(int comicId, string isbn, string title, string author, string publisher, string category, string imageUrl = null, string offerDate = null, string pages = null, string bookSummary = null)
         {
             InitializeComponent();
             this.comicId = comicId;
@@ -39,12 +39,15 @@ namespace WinFormsApp1
 
             this.btnSelectImage.Click += BtnSelectImage_Click;
 
-            // 載入現有資料
+            // 載入現有資料到控制項
             txtISBN.Text = isbn;
             txtTitle.Text = title;
             txtAuthor.Text = author;
             txtPublisher.Text = publisher;
             txtCategory.Text = category;
+            txtOfferDate.Text = offerDate; // 載入發售日
+            txtPages.Text = pages; // 載入頁數
+            txtBookSummary.Text = bookSummary; // 載入摘要
 
             // 如果有現有圖片，顯示它
             // 圖片載入邏輯將移至 LoadComicImageAsync 方法
@@ -141,6 +144,9 @@ namespace WinFormsApp1
         public string ImagePath { get; private set; }
         public string ImageUrl { get; private set; }
         public int ComicId => comicId;
+        public string OfferDate { get; private set; } // 新增 OfferDate 屬性
+        public string Pages { get; private set; } // 新增 Pages 屬性
+        public string BookSummary { get; private set; } // 新增 BookSummary 屬性
 
         private async void btnSave_Click(object sender, EventArgs e)
         {
@@ -150,6 +156,9 @@ namespace WinFormsApp1
             ComicAuthor = txtAuthor.Text;
             ComicPublisher = txtPublisher.Text;
             ComicCategory = txtCategory.Text;
+            OfferDate = txtOfferDate.Text; // 獲取發售日
+            Pages = txtPages.Text; // 獲取頁數
+            BookSummary = txtBookSummary.Text; // 獲取摘要
 
             // Validate ISBN is numeric
             if (!long.TryParse(ComicISBN, out _))

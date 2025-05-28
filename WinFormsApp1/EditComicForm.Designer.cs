@@ -42,6 +42,12 @@ namespace WinFormsApp1
             this.btnCancel = new System.Windows.Forms.Button();
             this.pbComicImage = new System.Windows.Forms.PictureBox();
             this.btnSelectImage = new System.Windows.Forms.Button();
+            this.lblOfferDate = new System.Windows.Forms.Label();
+            this.txtOfferDate = new System.Windows.Forms.TextBox();
+            this.lblPages = new System.Windows.Forms.Label();
+            this.txtPages = new System.Windows.Forms.TextBox();
+            this.lblBookSummary = new System.Windows.Forms.Label();
+            this.txtBookSummary = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pbComicImage)).BeginInit();
             this.SuspendLayout();
             // 
@@ -125,9 +131,58 @@ namespace WinFormsApp1
             this.txtCategory.Size = new System.Drawing.Size(200, 27);
             this.txtCategory.TabIndex = 9;
             // 
+            // lblOfferDate
+            // 
+            this.lblOfferDate.AutoSize = true;
+            this.lblOfferDate.Location = new System.Drawing.Point(300, 220);
+            this.lblOfferDate.Name = "lblOfferDate";
+            this.lblOfferDate.Size = new System.Drawing.Size(51, 20);
+            this.lblOfferDate.TabIndex = 14;
+            this.lblOfferDate.Text = "發售日";
+            // 
+            // txtOfferDate
+            // 
+            this.txtOfferDate.Location = new System.Drawing.Point(360, 217);
+            this.txtOfferDate.Name = "txtOfferDate";
+            this.txtOfferDate.Size = new System.Drawing.Size(200, 27);
+            this.txtOfferDate.TabIndex = 15;
+            // 
+            // lblPages
+            // 
+            this.lblPages.AutoSize = true;
+            this.lblPages.Location = new System.Drawing.Point(300, 260);
+            this.lblPages.Name = "lblPages";
+            this.lblPages.Size = new System.Drawing.Size(35, 20);
+            this.lblPages.TabIndex = 16;
+            this.lblPages.Text = "頁數";
+            // 
+            // txtPages
+            // 
+            this.txtPages.Location = new System.Drawing.Point(360, 257);
+            this.txtPages.Name = "txtPages";
+            this.txtPages.Size = new System.Drawing.Size(200, 27);
+            this.txtPages.TabIndex = 17;
+            // 
+            // lblBookSummary
+            // 
+            this.lblBookSummary.AutoSize = true;
+            this.lblBookSummary.Location = new System.Drawing.Point(300, 300);
+            this.lblBookSummary.Name = "lblBookSummary";
+            this.lblBookSummary.Size = new System.Drawing.Size(35, 20);
+            this.lblBookSummary.TabIndex = 18;
+            this.lblBookSummary.Text = "摘要";
+            // 
+            // txtBookSummary
+            // 
+            this.txtBookSummary.Location = new System.Drawing.Point(360, 297);
+            this.txtBookSummary.Multiline = true;
+            this.txtBookSummary.Name = "txtBookSummary";
+            this.txtBookSummary.Size = new System.Drawing.Size(200, 100);
+            this.txtBookSummary.TabIndex = 19;
+            // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(360, 220);
+            this.btnSave.Location = new System.Drawing.Point(360, 410);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(90, 35);
             this.btnSave.TabIndex = 10;
@@ -138,7 +193,7 @@ namespace WinFormsApp1
             // btnCancel
             // 
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(470, 220);
+            this.btnCancel.Location = new System.Drawing.Point(470, 410);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(90, 35);
             this.btnCancel.TabIndex = 11;
@@ -163,12 +218,19 @@ namespace WinFormsApp1
             this.btnSelectImage.TabIndex = 13;
             this.btnSelectImage.Text = "選擇圖片";
             this.btnSelectImage.UseVisualStyleBackColor = true;
+            this.btnSelectImage.Click += new System.EventHandler(this.BtnSelectImage_Click);
             // 
             // EditComicForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(600, 550);
+            this.Controls.Add(this.txtBookSummary);
+            this.Controls.Add(this.lblBookSummary);
+            this.Controls.Add(this.txtPages);
+            this.Controls.Add(this.lblPages);
+            this.Controls.Add(this.txtOfferDate);
+            this.Controls.Add(this.lblOfferDate);
             this.Controls.Add(this.btnSelectImage);
             this.Controls.Add(this.pbComicImage);
             this.Controls.Add(this.btnCancel);
@@ -211,5 +273,11 @@ namespace WinFormsApp1
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.PictureBox pbComicImage;
         private System.Windows.Forms.Button btnSelectImage;
+        private System.Windows.Forms.Label lblOfferDate;
+        private System.Windows.Forms.TextBox txtOfferDate;
+        private System.Windows.Forms.Label lblPages;
+        private System.Windows.Forms.TextBox txtPages;
+        private System.Windows.Forms.Label lblBookSummary;
+        private System.Windows.Forms.TextBox txtBookSummary;
     }
 } 
