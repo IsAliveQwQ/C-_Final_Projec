@@ -34,7 +34,7 @@ namespace WinFormsApp1
             // 
             // ComicDetailsForm
             // 
-            this.ClientSize = new System.Drawing.Size(550, 450); // 調整表單大小以符合新布局
+            this.ClientSize = new System.Drawing.Size(550, 750); // 調整表單大小以符合新布局，高度增加300像素
             this.Name = "ComicDetailsForm";
             this.Text = "漫畫詳細資訊"; // 確保這裡設定了表單標題
             this.ResumeLayout(false);

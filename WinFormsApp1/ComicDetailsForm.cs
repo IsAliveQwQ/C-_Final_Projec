@@ -39,15 +39,15 @@ namespace WinFormsApp1
 
             int textLeft = pbComicImage.Right + 20;
             int initialTop = 20;
-            int lineHeight = 30;
+            int lineHeight = 57;
 
-            lblTitle = new Label { AutoSize = true, Location = new Point(textLeft, initialTop), Font = new Font("Microsoft JhengHei UI", 12F) };
-            lblAuthor = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + lineHeight), Font = new Font("Microsoft JhengHei UI", 12F) };
-            lblPublisher = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 2 * lineHeight), Font = new Font("Microsoft JhengHei UI", 12F) };
-            lblCategory = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 3 * lineHeight), Font = new Font("Microsoft JhengHei UI", 12F) };
-            lblISBN = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 4 * lineHeight), Font = new Font("Microsoft JhengHei UI", 12F) };
-            lblBorrowStatus = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 5 * lineHeight), Font = new Font("Microsoft JhengHei UI", 12F) };
-            lblReserveStatus = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 6 * lineHeight), Font = new Font("Microsoft JhengHei UI", 12F) };
+            lblTitle = new Label { AutoSize = true, Location = new Point(textLeft, initialTop), Font = new Font("Microsoft JhengHei UI", 16F) };
+            lblAuthor = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
+            lblPublisher = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 2 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
+            lblCategory = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 3 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
+            lblISBN = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 4 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
+            lblBorrowStatus = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 5 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
+            lblReserveStatus = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 6 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
 
             this.Controls.Add(lblTitle);
             this.Controls.Add(lblAuthor);
