@@ -1568,6 +1568,7 @@ LEFT JOIN (
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersVisible = true
             };
+            ApplyUserComicsGridGlobalSettings(dgvUserComics); // <--- 新增這行
             dgvUserComics.CellContentClick += DgvUserComics_CellContentClick;
             tabPageHome.Controls.Add(dgvUserComics);
             tabPageHome.Controls.Add(panelSearch);
@@ -1742,7 +1743,7 @@ LEFT JOIN (
                 RowHeadersWidth = 60,
                 ColumnHeadersHeight = 24,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, // 新增：自動填滿
                 EnableHeadersVisualStyles = false,
                 BackgroundColor = System.Drawing.Color.White,
                 ScrollBars = ScrollBars.Vertical
@@ -1870,14 +1871,15 @@ LEFT JOIN (
 
                 // 在 UI 線程上更新 DataGridView
                 await this.InvokeAsync(() => {
+                    dgvUserComics.SuspendLayout();
                     dgvUserComics.DataSource = dt;
+                    ApplyUserComicsGridGlobalSettings(dgvUserComics); // <--- 新增這行
                     SetUserComicsGridColumnSettings();
                     UpdateComicsButtonColumnStates();
-
-                    // 更新分頁控制
                     lblComicPage.Text = $"第 {currentComicPage} 頁";
                     btnComicPrev.Enabled = currentComicPage > 1;
                     btnComicNext.Enabled = (currentComicPage * ComicPageSize) < totalRecords;
+                    dgvUserComics.ResumeLayout();
                 });
             }
             catch (Exception ex)
@@ -3009,6 +3011,9 @@ LEFT JOIN (
         private void SetUserComicsGridColumnSettingsForFavorite()
         {
             if (dgvFavoriteRecord == null || dgvFavoriteRecord.Columns.Count == 0) return;
+            dgvFavoriteRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill; // 新增：自動填滿
+
+            // 完全複製首頁欄位設定
             var columnSettings = new List<(string Name, string Header, int Width)>()
             {
                 ("書號", "編號", 70),
@@ -3017,9 +3022,65 @@ LEFT JOIN (
                 ("作者", "作者", 80),
                 ("出版社", "出版社", 90),
                 ("分類", "分類", 59),
+                ("詳情", "詳情", 58),
+                ("收藏", "收藏", 58),
                 ("借閱狀態", "借閱狀態", 76),
-                ("預約狀態", "預約狀態", 76)
+                ("預約狀態", "預約狀態", 76),
+                ("借書", "借書", 76),
+                ("預約", "預約", 76)
             };
+
+            // 新增按鈕欄位（如不存在）
+            if (dgvFavoriteRecord.Columns["詳情"] == null)
+            {
+                var btnDetails = new DataGridViewButtonColumn
+                {
+                    Name = "詳情",
+                    HeaderText = "詳情",
+                    Text = "詳情",
+                    UseColumnTextForButtonValue = false,
+                    Width = 58
+                };
+                dgvFavoriteRecord.Columns.Add(btnDetails);
+            }
+            if (dgvFavoriteRecord.Columns["收藏"] == null)
+            {
+                var btnFavorite = new DataGridViewButtonColumn
+                {
+                    Name = "收藏",
+                    HeaderText = "收藏",
+                    Text = "收藏",
+                    UseColumnTextForButtonValue = false,
+                    Width = 58
+                };
+                dgvFavoriteRecord.Columns.Add(btnFavorite);
+            }
+            if (dgvFavoriteRecord.Columns["借書"] == null)
+            {
+                var btnRent = new DataGridViewButtonColumn
+                {
+                    Name = "借書",
+                    HeaderText = "借書",
+                    Text = "借書",
+                    UseColumnTextForButtonValue = false,
+                    Width = 76
+                };
+                dgvFavoriteRecord.Columns.Add(btnRent);
+            }
+            if (dgvFavoriteRecord.Columns["預約"] == null)
+            {
+                var btnReserve = new DataGridViewButtonColumn
+                {
+                    Name = "預約",
+                    HeaderText = "預約",
+                    Text = "預約",
+                    UseColumnTextForButtonValue = false,
+                    Width = 76
+                };
+                dgvFavoriteRecord.Columns.Add(btnReserve);
+            }
+
+            // 設定欄位順序、標題、寬度
             var currentColumns = dgvFavoriteRecord.Columns.OfType<DataGridViewColumn>().ToList();
             int displayIndex = 0;
             foreach (var setting in columnSettings)
@@ -3029,9 +3090,26 @@ LEFT JOIN (
                 {
                     col.HeaderText = setting.Header;
                     col.Width = setting.Width;
-                    col.DisplayIndex = displayIndex++;
+                    try
+                    {
+                        if (!(col is DataGridViewButtonColumn))
+                        {
+                            col.DataPropertyName = setting.Name;
+                        }
+                        col.DisplayIndex = displayIndex++;
+                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "借書" || setting.Name == "預約")
+                        {
+                            col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                        }
+                    }
+                    catch (ArgumentOutOfRangeException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error setting DisplayIndex for column {setting.Name}: {ex.Message}");
+                        col.DisplayIndex = dgvFavoriteRecord.Columns.Count > 0 ? dgvFavoriteRecord.Columns.Count - 1 : 0;
+                    }
                 }
             }
+            // 隱藏非預期欄位
             foreach (var col in currentColumns)
             {
                 if (!columnSettings.Any(setting => setting.Name == col.Name))
@@ -3043,6 +3121,29 @@ LEFT JOIN (
                     col.Visible = true;
                 }
             }
+        }
+
+        // 新增：統一設定 DataGridView 樣式的方法
+        private void ApplyUserComicsGridGlobalSettings(DataGridView dgv)
+        {
+            dgv.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
+            dgv.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
+            dgv.RowTemplate.Height = 36;
+            dgv.RowHeadersWidth = 60;
+            dgv.ColumnHeadersHeight = 48;
+            dgv.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
+            dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgv.EnableHeadersVisualStyles = false;
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+            dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgv.MultiSelect = false;
+            dgv.ReadOnly = true;
+            dgv.AllowUserToAddRows = false;
+            dgv.AllowUserToDeleteRows = false;
+            dgv.AllowUserToOrderColumns = false;
+            dgv.StandardTab = true;
+            dgv.TabStop = true;
+            dgv.TabIndex = 0;
         }
     }
 } // UserForm 結尾與 namespace 結尾
