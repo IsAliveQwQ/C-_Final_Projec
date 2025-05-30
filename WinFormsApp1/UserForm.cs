@@ -2219,6 +2219,8 @@ LEFT JOIN (
                             cellFavorite.Style.ForeColor = System.Drawing.Color.Black;
                         }
                     }
+                    // 新增：首頁收藏/取消收藏後即時刷新收藏紀錄分頁
+                    await RefreshFavoriteRecordsAsync();
                     return;
                 }
             }
