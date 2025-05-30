@@ -318,3 +318,39 @@ DEVELOPMENT_PLAN.md   # 開發計畫與進度
   - 冷卻期、借閱者、預約者等狀態查詢皆改為一次性拉取，記憶體判斷，顯著減少資料庫查詢次數。
   - 主表查詢以 JOIN 一次取回所有狀態，按鈕啟用/禁用直接依據 DataTable 欄位判斷，UI刷新更即時。
   - 所有優化均保留原有流程與變數名，低侵入性，確保穩定性與可維護性。 
+
+---
+
+## WinForms DataGridView 高效刷新與樣式穩定方案（2024/06/xx 實施）
+
+### 問題描述
+- 使用者主頁漫畫列表（DataGridView）在每次刷新（如點擊「刷新」按鈕）時，會出現欄位順序、寬度、按鈕樣式異常或閃爍現象。
+- 原因為每次重設 DataSource 時，DataGridView 會重建欄位，導致自訂欄位（如詳情、收藏、借書、預約按鈕）與樣式設定失效。
+
+### 解決方案原理
+- **只在初始化時設置 DataSource、欄位結構、樣式與自訂按鈕**。
+- **刷新時僅更新 DataTable 內容，不重設 DataSource**，確保所有欄位、順序、樣式、按鈕都不變。
+- **所有欄位（含自訂ButtonColumn）都在初始化時建立，之後不再動態增減**。
+- **使用 SuspendLayout/ResumeLayout 及 DoubleBuffered 防止閃爍**。
+
+### 具體實踐步驟
+1. **建立全域 DataTable**
+   - 於 UserForm.cs 宣告 `private DataTable comicsTable = new DataTable();`
+2. **初始化時設置 DataSource 和所有欄位**
+   - 在 SetupHomePageLayout 或建構子中：
+     - 設定 comicsTable 欄位結構
+     - 設定 dgvUserComics.DataSource = comicsTable
+     - 加入所有自訂按鈕欄位（詳情、收藏、借書、預約）
+     - 設定欄寬、字型、行高等樣式
+3. **刷新時只更新 DataTable 內容**
+   - 不再重設 DataSource
+   - 僅用 comicsTable.Clear() + ImportRow() 將新查詢結果導入
+   - 用 SuspendLayout/ResumeLayout 包裹，防止閃爍
+4. **按鈕狀態/文字刷新**
+   - 資料更新後，遍歷 DataGridView Rows，直接設置 ButtonCell 的 Value/ReadOnly 屬性
+
+### 對原有功能/邏輯/顯示的保證
+- 此方案**不改變任何原有資料查詢、分頁、按鈕事件、狀態判斷邏輯**
+- 僅優化資料刷新方式，**完全保留原有顯示與互動體驗**
+- 侵入性極低，僅需調整資料刷新與初始化欄位的時機與方式
+- 經此優化後，主表刷新將無閃爍、樣式永遠穩定、效能顯著提升 
