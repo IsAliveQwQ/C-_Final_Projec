@@ -1214,14 +1214,14 @@ namespace WinFormsApp1
         {
             dgvComics.ColumnHeadersHeight = 72;
             dgvComics.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
-            if (dgvComics.Columns.Contains("comic_id")) { dgvComics.Columns["comic_id"].HeaderText = "書號"; dgvComics.Columns["comic_id"].Width = 80; }
-            if (dgvComics.Columns.Contains("isbn")) { dgvComics.Columns["isbn"].HeaderText = "ISBN"; dgvComics.Columns["isbn"].Width = 120; }
-            if (dgvComics.Columns.Contains("title")) { dgvComics.Columns["title"].HeaderText = "書名"; dgvComics.Columns["title"].Width = 440; }
-            if (dgvComics.Columns.Contains("author")) { dgvComics.Columns["author"].HeaderText = "作者"; dgvComics.Columns["author"].Width = 180; }
-            if (dgvComics.Columns.Contains("publisher")) { dgvComics.Columns["publisher"].HeaderText = "出版社"; dgvComics.Columns["publisher"].Width = 200; }
-            if (dgvComics.Columns.Contains("category")) { dgvComics.Columns["category"].HeaderText = "分類"; dgvComics.Columns["category"].Width = 140; }
-            if (dgvComics.Columns.Contains("借閱狀態")) { dgvComics.Columns["借閱狀態"].HeaderText = "借閱狀態"; dgvComics.Columns["借閱狀態"].Width = 100; }
-            if (dgvComics.Columns.Contains("預約狀態")) { dgvComics.Columns["預約狀態"].HeaderText = "預約狀態"; dgvComics.Columns["預約狀態"].Width = 120; }
+            if (dgvComics.Columns.Contains("comic_id")) { var col = dgvComics.Columns["comic_id"]; col.HeaderText = "書號"; col.Width = 80; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
+            if (dgvComics.Columns.Contains("isbn")) { var col = dgvComics.Columns["isbn"]; col.HeaderText = "ISBN"; col.Width = 120; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
+            if (dgvComics.Columns.Contains("title")) { var col = dgvComics.Columns["title"]; col.HeaderText = "書名"; col.Width = 440; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; }
+            if (dgvComics.Columns.Contains("author")) { var col = dgvComics.Columns["author"]; col.HeaderText = "作者"; col.Width = 180; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
+            if (dgvComics.Columns.Contains("publisher")) { var col = dgvComics.Columns["publisher"]; col.HeaderText = "出版社"; col.Width = 200; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
+            if (dgvComics.Columns.Contains("category")) { var col = dgvComics.Columns["category"]; col.HeaderText = "分類"; col.Width = 140; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
+            if (dgvComics.Columns.Contains("借閱狀態")) { var col = dgvComics.Columns["借閱狀態"]; col.HeaderText = "借閱狀態"; col.Width = 100; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
+            if (dgvComics.Columns.Contains("預約狀態")) { var col = dgvComics.Columns["預約狀態"]; col.HeaderText = "預約狀態"; col.Width = 120; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
         }
 
         private bool borrowGridSettingsApplied = false;
@@ -1563,12 +1563,15 @@ LEFT JOIN (
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
                 Name = "dgvUserComics",
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, // 這裡可以保留，但後續會被覆寫
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersVisible = true
             };
-            ApplyUserComicsGridGlobalSettings(dgvUserComics); // <--- 新增這行
+
+            SetUserComicsGridColumnSettings(); // <-- 先設定個別欄位樣式
+            ApplyUserComicsGridGlobalSettings(dgvUserComics); // <-- 再設定全局樣式 (位置調整)
+
             dgvUserComics.CellContentClick += DgvUserComics_CellContentClick;
             tabPageHome.Controls.Add(dgvUserComics);
             tabPageHome.Controls.Add(panelSearch);
@@ -1756,6 +1759,8 @@ LEFT JOIN (
                 null,
                 dgvFavoriteRecord,
                 new object[] { true });
+            // 新增：綁定 CellContentClick 事件處理程式
+            dgvFavoriteRecord.CellContentClick += DgvFavoriteRecord_CellContentClick;
             tabPageFavorite.Controls.Add(dgvFavoriteRecord);
             tabPageFavorite.Controls.Add(panelPaging);
             tabPageFavorite.Controls.Add(panelSearch);
@@ -1872,10 +1877,10 @@ LEFT JOIN (
                 // 在 UI 線程上更新 DataGridView
                 await this.InvokeAsync(() => {
                     dgvUserComics.SuspendLayout();
-                    dgvUserComics.DataSource = dt;
-                    ApplyUserComicsGridGlobalSettings(dgvUserComics); // <--- 新增這行
-                    SetUserComicsGridColumnSettings();
-                    UpdateComicsButtonColumnStates();
+                    dgvUserComics.DataSource = dt; // 設定數據源後
+                    SetUserComicsGridColumnSettings(); // <-- 先設定個別欄位樣式
+                    ApplyUserComicsGridGlobalSettings(dgvUserComics); // <-- 再設定全局樣式
+                    UpdateComicsButtonColumnStates(); // <-- 最後更新按鈕狀態
                     lblComicPage.Text = $"第 {currentComicPage} 頁";
                     btnComicPrev.Enabled = currentComicPage > 1;
                     btnComicNext.Enabled = (currentComicPage * ComicPageSize) < totalRecords;
@@ -1891,6 +1896,9 @@ LEFT JOIN (
         private void SetUserComicsGridColumnSettings()
         {
             if (dgvUserComics == null || dgvUserComics.Columns.Count == 0) return;
+
+            // 移除：這行全局 AutoSizeColumnsMode 設定會干擾個別欄位設定
+            // dgvUserComics.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None; 
 
             // Define desired order and width for all potential columns
             var columnSettings = new List<(string Name, string Header, int Width)>()
@@ -2006,6 +2014,9 @@ LEFT JOIN (
                 }
             }
             // Note: Button text and state setting logic remains in RefreshUserComicsGrid after data source is set.
+
+            // 移除：這行全局 AutoSizeColumnsMode 設定會干擾個別欄位設定
+            // dgvUserComics.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill; 
         }
 
         // 動態設置主頁漫畫列表按鈕文字和狀態的方法
@@ -2032,6 +2043,14 @@ LEFT JOIN (
                 string reserveStatus = row.Cells["預約狀態"]?.Value?.ToString() ?? "";
                 int? borrowedBy = row.Cells["borrowed_by"]?.Value as int?;
                 int? reservedBy = row.Cells["reserved_by"]?.Value as int?;
+
+                // 詳情按鈕：設定文字
+                var cellDetails = row.Cells["詳情"] as DataGridViewButtonCell;
+                if (cellDetails != null)
+                {
+                    cellDetails.Value = "詳情"; // 確保詳情按鈕顯示文字
+                    cellDetails.ReadOnly = false; // 詳情按鈕通常可點擊
+                }
 
                 // 更新借書按鈕
                 var cellRent = row.Cells["借書"] as DataGridViewButtonCell;
@@ -2981,10 +3000,13 @@ LEFT JOIN (
                 cachedFavoriteRecords = dt;
                 lastFavoriteRefresh = DateTime.Now;
                 await this.InvokeAsync(() => {
+                    dgvFavoriteRecord.SuspendLayout(); // 新增：暫停佈局
                     dgvFavoriteRecord.DataSource = dt;
                     SetUserComicsGridColumnSettingsForFavorite();
+                    UpdateFavoriteButtonColumnStates(); // 新增：更新按鈕狀態
                     lblFavoritePage.Text = $"第 {currentFavoritePage} 頁";
                     btnFavoritePrev.Enabled = currentFavoritePage > 1;
+                    dgvFavoriteRecord.ResumeLayout(); // 新增：恢復佈局
                 });
                 // 查詢總記錄數
                 await Task.Run(async () => {
@@ -3144,6 +3166,189 @@ LEFT JOIN (
             dgv.StandardTab = true;
             dgv.TabStop = true;
             dgv.TabIndex = 0;
+        }
+
+        // 新增：更新收藏紀錄分頁按鈕狀態
+        private void UpdateFavoriteButtonColumnStates()
+        {
+            if (dgvFavoriteRecord == null || dgvFavoriteRecord.Rows.Count == 0) return;
+
+            // 獲取必要的狀態信息 (可以重用主頁的方法)
+            var borrowCoolingSet = GetUserBorrowCoolingComicIds();
+            var reserveCoolingSet = GetUserReserveCoolingComicIds();
+            // 收藏紀錄頁面所有漫畫都是已收藏狀態
+            // var favoriteSet = GetUserFavoriteComicIds(); // 在此頁面無需額外查詢收藏狀態
+
+            foreach (DataGridViewRow row in dgvFavoriteRecord.Rows)
+            {
+                if (row.IsNewRow) continue;
+
+                int comicId = 0;
+                if (dgvFavoriteRecord.Columns.Contains("書號") && row.Cells["書號"] != null && row.Cells["書號"].Value != null)
+                    int.TryParse(row.Cells["書號"].Value.ToString(), out comicId);
+
+                // 詳情按鈕 (始終啟用)
+                var cellDetails = row.Cells["詳情"] as DataGridViewButtonCell;
+                if (cellDetails != null)
+                {
+                    cellDetails.Value = "詳情";
+                    cellDetails.ReadOnly = false;
+                }
+
+                // 收藏按鈕 (在此頁面始終顯示已收藏，且通常只讀)
+                var cellFavorite = row.Cells["收藏"] as DataGridViewButtonCell;
+                if (cellFavorite != null)
+                {
+                    cellFavorite.Value = "已收藏";
+                    cellFavorite.Style.ForeColor = System.Drawing.Color.Red; // 顯示為紅色
+                    // 考慮是否允許在此頁面取消收藏，如果允許則 ReadOnly=false
+                    cellFavorite.ReadOnly = false; // 暫時設為可操作，以便實現取消收藏
+                }
+
+                // 獲取借閱和預約狀態
+                string borrowStatus = (dgvFavoriteRecord.Columns.Contains("借閱狀態") && row.Cells["借閱狀態"] != null) ? (row.Cells["借閱狀態"].Value?.ToString() ?? "") : "";
+                string reserveStatus = (dgvFavoriteRecord.Columns.Contains("預約狀態") && row.Cells["預約狀態"] != null) ? (row.Cells["預約狀態"].Value?.ToString() ?? "") : "";
+                int? borrowedBy = (dgvFavoriteRecord.Columns.Contains("borrowed_by") && row.Cells["borrowed_by"] != null && row.Cells["borrowed_by"].Value != DBNull.Value) ? (int?)Convert.ToInt32(row.Cells["borrowed_by"].Value) : null;
+                int? reservedBy = (dgvFavoriteRecord.Columns.Contains("reserved_by") && row.Cells["reserved_by"] != null && row.Cells["reserved_by"].Value != DBNull.Value) ? (int?)Convert.ToInt32(row.Cells["reserved_by"].Value) : null;
+
+                // 借書按鈕
+                var cellRent = row.Cells["借書"] as DataGridViewButtonCell;
+                if (cellRent != null)
+                {
+                    if (borrowStatus == "已被借")
+                    {
+                         // 如果是自己借的，顯示還書
+                        if (borrowedBy == loggedInUserId)
+                        { 
+                           cellRent.Value = "還書";
+                           cellRent.ReadOnly = false; // 可還書
+                        }
+                        else // 被其他人借走
+                        {
+                            cellRent.Value = "借書"; // 顯示借書，但不可操作
+                            cellRent.ReadOnly = true;
+                        }
+                    }
+                    else // 未被借
+                    {
+                        // 檢查冷卻期
+                        if (borrowCoolingSet.Contains(comicId))
+                        {
+                            cellRent.Value = "冷卻中";
+                            cellRent.ReadOnly = true;
+                        }
+                         // 檢查是否被預約，如果是自己的預約則可借，否則不可借
+                         else if (reserveStatus == "已被預約" && reservedBy != loggedInUserId)
+                         {
+                             cellRent.Value = "借書";
+                             cellRent.ReadOnly = true;
+                         }
+                        else // 可借書
+                        {
+                            cellRent.Value = "借書";
+                            cellRent.ReadOnly = false;
+                        }
+                    }
+                }
+
+                // 預約按鈕
+                var cellReserve = row.Cells["預約"] as DataGridViewButtonCell;
+                if (cellReserve != null)
+                {
+                    if (borrowStatus == "已被借")
+                    {
+                        cellReserve.Value = "不可預約";
+                        cellReserve.ReadOnly = true;
+                    }
+                    else if (reserveStatus == "已被預約")
+                    {
+                        // 如果是自己的預約，顯示取消預約
+                        if (reservedBy == loggedInUserId)
+                        { 
+                           cellReserve.Value = "取消預約";
+                           cellReserve.ReadOnly = false; // 可取消預約
+                        }
+                         else // 被其他人預約
+                         {
+                            cellReserve.Value = "已被預約"; // 顯示已被預約，但不可操作
+                            cellReserve.ReadOnly = true;
+                         }
+                    }
+                    else // 未被預約
+                    {
+                        // 檢查冷卻期
+                         if (reserveCoolingSet.Contains(comicId))
+                         { 
+                            cellReserve.Value = "冷卻中";
+                             cellReserve.ReadOnly = true;
+                         }
+                         else // 可預約
+                         {
+                            cellReserve.Value = "預約";
+                             cellReserve.ReadOnly = false;
+                         }
+                    }
+                }
+            }
+        }
+
+        // 新增收藏紀錄分頁的 CellContentClick 事件處理程式
+        private async void DgvFavoriteRecord_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return; // 確保點擊的是有效的儲存格
+
+            var dgv = sender as DataGridView;
+            if (dgv == null) return;
+
+            var columnName = dgv.Columns[e.ColumnIndex].Name;
+            // 確保點擊的是按鈕欄位
+            if (!(dgv.Rows[e.RowIndex].Cells[e.ColumnIndex] is DataGridViewButtonCell)) return;
+
+            int comicId = 0;
+            if (dgv.Columns.Contains("書號") && dgv.Rows[e.RowIndex].Cells["書號"] != null && dgv.Rows[e.RowIndex].Cells["書號"].Value != null)
+                int.TryParse(dgv.Rows[e.RowIndex].Cells["書號"].Value.ToString(), out comicId);
+
+            if (comicId == 0) return; // 無效的漫畫 ID
+
+            try
+            {
+                // 只處理收藏按鈕（在此頁面為取消收藏）
+                if (columnName == "收藏")
+                {
+                    // 由於在收藏頁面，點擊收藏按鈕即為取消收藏
+                    DBHelper.ExecuteNonQuery("DELETE FROM user_favorites WHERE user_id = @uid AND comic_id = @cid",
+                        new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                        });
+                    MessageBox.Show("取消收藏成功！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // 刷新收藏紀錄分頁和首頁
+                    await RefreshFavoriteRecordsAsync();
+                    await RefreshUserComicsGrid("", "全部"); // 刷新首頁漫畫列表，使用當前搜尋條件
+                }
+                // 新增：處理詳情按鈕點擊
+                else if (columnName == "詳情")
+                {
+                    var comic = GetComicById(comicId);
+                    if (comic != null)
+                    {
+                        // 建立新的 ComicDetailsForm 實例
+                        var detailsForm = new ComicDetailsForm(comic);
+
+                        // 設定彈窗大小（可以參考主頁的設置）
+                        // detailsForm.Size = new Size(this.Width / 2, this.Height);
+
+                        // 顯示彈窗
+                        detailsForm.ShowDialog(this);
+                    }
+                }
+                // 其他按鈕（借書、預約）的邏輯暫不在此處理，留待後續步驟
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("操作失敗：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 } // UserForm 結尾與 namespace 結尾
