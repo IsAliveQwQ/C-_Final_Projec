@@ -3035,7 +3035,7 @@ LEFT JOIN (
             if (dgvFavoriteRecord == null || dgvFavoriteRecord.Columns.Count == 0) return;
             dgvFavoriteRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill; // 新增：自動填滿
 
-            // 完全複製首頁欄位設定
+            // 只保留必要欄位，不包含借書與預約
             var columnSettings = new List<(string Name, string Header, int Width)>()
             {
                 ("書號", "編號", 70),
@@ -3047,12 +3047,10 @@ LEFT JOIN (
                 ("詳情", "詳情", 58),
                 ("收藏", "收藏", 58),
                 ("借閱狀態", "借閱狀態", 76),
-                ("預約狀態", "預約狀態", 76),
-                ("借書", "借書", 76),
-                ("預約", "預約", 76)
+                ("預約狀態", "預約狀態", 76)
             };
 
-            // 新增按鈕欄位（如不存在）
+            // 僅新增詳情與收藏按鈕欄位
             if (dgvFavoriteRecord.Columns["詳情"] == null)
             {
                 var btnDetails = new DataGridViewButtonColumn
@@ -3077,30 +3075,11 @@ LEFT JOIN (
                 };
                 dgvFavoriteRecord.Columns.Add(btnFavorite);
             }
-            if (dgvFavoriteRecord.Columns["借書"] == null)
-            {
-                var btnRent = new DataGridViewButtonColumn
-                {
-                    Name = "借書",
-                    HeaderText = "借書",
-                    Text = "借書",
-                    UseColumnTextForButtonValue = false,
-                    Width = 76
-                };
-                dgvFavoriteRecord.Columns.Add(btnRent);
-            }
-            if (dgvFavoriteRecord.Columns["預約"] == null)
-            {
-                var btnReserve = new DataGridViewButtonColumn
-                {
-                    Name = "預約",
-                    HeaderText = "預約",
-                    Text = "預約",
-                    UseColumnTextForButtonValue = false,
-                    Width = 76
-                };
-                dgvFavoriteRecord.Columns.Add(btnReserve);
-            }
+            // 強制移除借書與預約欄位（如果存在）
+            while (dgvFavoriteRecord.Columns["借書"] != null)
+                dgvFavoriteRecord.Columns.Remove("借書");
+            while (dgvFavoriteRecord.Columns["預約"] != null)
+                dgvFavoriteRecord.Columns.Remove("預約");
 
             // 設定欄位順序、標題、寬度
             var currentColumns = dgvFavoriteRecord.Columns.OfType<DataGridViewColumn>().ToList();
@@ -3119,7 +3098,7 @@ LEFT JOIN (
                             col.DataPropertyName = setting.Name;
                         }
                         col.DisplayIndex = displayIndex++;
-                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "借書" || setting.Name == "預約")
+                        if (setting.Name == "詳情" || setting.Name == "收藏")
                         {
                             col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
                         }
@@ -3173,19 +3152,9 @@ LEFT JOIN (
         {
             if (dgvFavoriteRecord == null || dgvFavoriteRecord.Rows.Count == 0) return;
 
-            // 獲取必要的狀態信息 (可以重用主頁的方法)
-            var borrowCoolingSet = GetUserBorrowCoolingComicIds();
-            var reserveCoolingSet = GetUserReserveCoolingComicIds();
-            // 收藏紀錄頁面所有漫畫都是已收藏狀態
-            // var favoriteSet = GetUserFavoriteComicIds(); // 在此頁面無需額外查詢收藏狀態
-
             foreach (DataGridViewRow row in dgvFavoriteRecord.Rows)
             {
                 if (row.IsNewRow) continue;
-
-                int comicId = 0;
-                if (dgvFavoriteRecord.Columns.Contains("書號") && row.Cells["書號"] != null && row.Cells["書號"].Value != null)
-                    int.TryParse(row.Cells["書號"].Value.ToString(), out comicId);
 
                 // 詳情按鈕 (始終啟用)
                 var cellDetails = row.Cells["詳情"] as DataGridViewButtonCell;
@@ -3200,94 +3169,8 @@ LEFT JOIN (
                 if (cellFavorite != null)
                 {
                     cellFavorite.Value = "已收藏";
-                    cellFavorite.Style.ForeColor = System.Drawing.Color.Red; // 顯示為紅色
-                    // 考慮是否允許在此頁面取消收藏，如果允許則 ReadOnly=false
-                    cellFavorite.ReadOnly = false; // 暫時設為可操作，以便實現取消收藏
-                }
-
-                // 獲取借閱和預約狀態
-                string borrowStatus = (dgvFavoriteRecord.Columns.Contains("借閱狀態") && row.Cells["借閱狀態"] != null) ? (row.Cells["借閱狀態"].Value?.ToString() ?? "") : "";
-                string reserveStatus = (dgvFavoriteRecord.Columns.Contains("預約狀態") && row.Cells["預約狀態"] != null) ? (row.Cells["預約狀態"].Value?.ToString() ?? "") : "";
-                int? borrowedBy = (dgvFavoriteRecord.Columns.Contains("borrowed_by") && row.Cells["borrowed_by"] != null && row.Cells["borrowed_by"].Value != DBNull.Value) ? (int?)Convert.ToInt32(row.Cells["borrowed_by"].Value) : null;
-                int? reservedBy = (dgvFavoriteRecord.Columns.Contains("reserved_by") && row.Cells["reserved_by"] != null && row.Cells["reserved_by"].Value != DBNull.Value) ? (int?)Convert.ToInt32(row.Cells["reserved_by"].Value) : null;
-
-                // 借書按鈕
-                var cellRent = row.Cells["借書"] as DataGridViewButtonCell;
-                if (cellRent != null)
-                {
-                    if (borrowStatus == "已被借")
-                    {
-                         // 如果是自己借的，顯示還書
-                        if (borrowedBy == loggedInUserId)
-                        { 
-                           cellRent.Value = "還書";
-                           cellRent.ReadOnly = false; // 可還書
-                        }
-                        else // 被其他人借走
-                        {
-                            cellRent.Value = "借書"; // 顯示借書，但不可操作
-                            cellRent.ReadOnly = true;
-                        }
-                    }
-                    else // 未被借
-                    {
-                        // 檢查冷卻期
-                        if (borrowCoolingSet.Contains(comicId))
-                        {
-                            cellRent.Value = "冷卻中";
-                            cellRent.ReadOnly = true;
-                        }
-                         // 檢查是否被預約，如果是自己的預約則可借，否則不可借
-                         else if (reserveStatus == "已被預約" && reservedBy != loggedInUserId)
-                         {
-                             cellRent.Value = "借書";
-                             cellRent.ReadOnly = true;
-                         }
-                        else // 可借書
-                        {
-                            cellRent.Value = "借書";
-                            cellRent.ReadOnly = false;
-                        }
-                    }
-                }
-
-                // 預約按鈕
-                var cellReserve = row.Cells["預約"] as DataGridViewButtonCell;
-                if (cellReserve != null)
-                {
-                    if (borrowStatus == "已被借")
-                    {
-                        cellReserve.Value = "不可預約";
-                        cellReserve.ReadOnly = true;
-                    }
-                    else if (reserveStatus == "已被預約")
-                    {
-                        // 如果是自己的預約，顯示取消預約
-                        if (reservedBy == loggedInUserId)
-                        { 
-                           cellReserve.Value = "取消預約";
-                           cellReserve.ReadOnly = false; // 可取消預約
-                        }
-                         else // 被其他人預約
-                         {
-                            cellReserve.Value = "已被預約"; // 顯示已被預約，但不可操作
-                            cellReserve.ReadOnly = true;
-                         }
-                    }
-                    else // 未被預約
-                    {
-                        // 檢查冷卻期
-                         if (reserveCoolingSet.Contains(comicId))
-                         { 
-                            cellReserve.Value = "冷卻中";
-                             cellReserve.ReadOnly = true;
-                         }
-                         else // 可預約
-                         {
-                            cellReserve.Value = "預約";
-                             cellReserve.ReadOnly = false;
-                         }
-                    }
+                    cellFavorite.Style.ForeColor = System.Drawing.Color.Red;
+                    cellFavorite.ReadOnly = false;
                 }
             }
         }
