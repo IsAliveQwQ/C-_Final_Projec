@@ -23,6 +23,10 @@ namespace WinFormsApp1
         public string 預約狀態 { get; set; }
         // 新增圖片 URL 屬性
         public string ImageUrl { get; set; }
+        // 新增欄位
+        public string OfferDate { get; set; } // 出版日
+        public string Pages { get; set; } // 頁數
+        public string BookSummary { get; set; } // 摘要
     }
 
     public partial class UserForm : Form
@@ -2708,6 +2712,9 @@ LEFT JOIN (
                                 c.publisher AS 出版社, 
                                 c.category AS 分類,
                                 c.image_path AS 圖片URL,
+                                c.offer_date AS 出版日,
+                                c.pages AS 頁數,
+                                c.book_summary AS 摘要,
                                 CASE WHEN br.comic_id IS NOT NULL THEN '已被借' ELSE '未被借' END AS 借閱狀態,
                                 CASE
                                     WHEN br.comic_id IS NOT NULL THEN '不可預約'
@@ -2738,9 +2745,9 @@ LEFT JOIN (
                         出版社 = row["出版社"].ToString(),
                         分類 = row["分類"].ToString(),
                         ISBN = row["ISBN"].ToString(),
-                        借閱狀態 = row["借閱狀態"].ToString(),
-                        預約狀態 = row["預約狀態"].ToString(),
-                        // 設置圖片 URL
+                        OfferDate = row["出版日"]?.ToString(),
+                        Pages = row["頁數"]?.ToString(),
+                        BookSummary = row["摘要"]?.ToString(),
                         ImageUrl = row["圖片URL"]?.ToString()
                     };
                 }

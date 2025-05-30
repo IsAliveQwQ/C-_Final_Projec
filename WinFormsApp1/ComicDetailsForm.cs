@@ -14,8 +14,10 @@ namespace WinFormsApp1
         private Label lblPublisher;
         private Label lblCategory;
         private Label lblISBN;
-        private Label lblBorrowStatus;
-        private Label lblReserveStatus;
+        private Label lblOfferDate;
+        private Label lblPages;
+        private Label lblSummaryTitle;
+        private Label lblSummaryContent;
         private PictureBox pbComicImage;
 
         private string imageUrl;
@@ -25,6 +27,9 @@ namespace WinFormsApp1
             InitializeComponent();
             this.Text = "漫畫詳細資訊";
             this.StartPosition = FormStartPosition.CenterParent;
+            this.ClientSize = new Size(550, 725);
+            this.MinimumSize = new Size(550, 725);
+            this.MaximumSize = new Size(550, 725);
 
             this.imageUrl = comic.ImageUrl;
 
@@ -38,42 +43,67 @@ namespace WinFormsApp1
             this.Controls.Add(pbComicImage);
 
             int textLeft = pbComicImage.Right + 20;
-            int initialTop = 20;
-            int lineHeight = 57;
-
-            lblTitle = new Label { AutoSize = true, Location = new Point(textLeft, initialTop), Font = new Font("Microsoft JhengHei UI", 16F) };
-            lblAuthor = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
-            lblPublisher = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 2 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
-            lblCategory = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 3 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
-            lblISBN = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 4 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
-            lblBorrowStatus = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 5 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
-            lblReserveStatus = new Label { AutoSize = true, Location = new Point(textLeft, initialTop + 6 * lineHeight), Font = new Font("Microsoft JhengHei UI", 16F) };
-
-            this.Controls.Add(lblTitle);
-            this.Controls.Add(lblAuthor);
-            this.Controls.Add(lblPublisher);
-            this.Controls.Add(lblCategory);
-            this.Controls.Add(lblISBN);
-            this.Controls.Add(lblBorrowStatus);
-            this.Controls.Add(lblReserveStatus);
-
-            DisplayComicDetails(comic);
+            int infoTop = pbComicImage.Top;
+            int infoHeight = pbComicImage.Height;
+            int infoLines = 7;
+            Label[] infoLabels = new Label[infoLines];
+            for (int i = 0; i < infoLines; i++)
+            {
+                infoLabels[i] = new Label { AutoSize = true, Font = new Font("Microsoft JhengHei UI", 16F) };
+                this.Controls.Add(infoLabels[i]);
+            }
+            // 先填內容
+            infoLabels[0].Text = $"書名：{comic.書名}";
+            infoLabels[1].Text = $"作者：{comic.作者}";
+            infoLabels[2].Text = $"出版社：{comic.出版社}";
+            infoLabels[3].Text = $"分類：{comic.分類}";
+            infoLabels[4].Text = $"ISBN：{comic.ISBN}";
+            infoLabels[5].Text = $"出版日：{comic.OfferDate}";
+            infoLabels[6].Text = $"頁數：{comic.Pages}";
+            // 強制計算Label高度
+            this.PerformLayout();
+            // 計算所有Label的總高度
+            int totalLabelsHeight = 0;
+            for (int i = 0; i < infoLines; i++)
+                totalLabelsHeight += infoLabels[i].Height;
+            // 計算需要平均分配的間隔空間
+            int totalGapSpace = infoHeight - totalLabelsHeight;
+            int numberOfGaps = infoLines > 1 ? infoLines - 1 : 0;
+            int adjustedGapHeight = numberOfGaps > 0 ? totalGapSpace / numberOfGaps : 0; // 剛好的行距，不再減去像素
+            // 根據計算出的間隔重新設定每一行的Y座標
+            int currentY = infoTop;
+            for (int i = 0; i < infoLines; i++)
+            {
+                infoLabels[i].Location = new Point(textLeft, currentY);
+                currentY += infoLabels[i].Height + adjustedGapHeight;
+            }
+            int summaryTop = pbComicImage.Bottom + 30;
+            lblSummaryTitle = new Label
+            {
+                AutoSize = true,
+                Location = new Point(20, summaryTop),
+                Font = new Font("Microsoft JhengHei UI", 14F, FontStyle.Bold),
+                Text = "內容簡介"
+            };
+            lblSummaryContent = new Label
+            {
+                AutoSize = true,
+                Location = new Point(20, summaryTop + 36),
+                MaximumSize = new Size(this.ClientSize.Width - 40, 0),
+                Font = new Font("Microsoft JhengHei UI", 11F),
+                TextAlign = ContentAlignment.TopLeft
+            };
+            this.Controls.Add(lblSummaryTitle);
+            this.Controls.Add(lblSummaryContent);
+            lblSummaryContent.Text = string.IsNullOrWhiteSpace(comic.BookSummary) ? "(無摘要)" : comic.BookSummary;
 
             this.Load += ComicDetailsForm_Load;
-        }
-
-        public void DisplayComicDetails(ComicDetails comic)
-        {
-            if (comic != null)
+            this.Shown += (s, e) =>
             {
-                lblTitle.Text = $"書名：{comic.書名}";
-                lblAuthor.Text = $"作者：{comic.作者}";
-                lblPublisher.Text = $"出版社：{comic.出版社}";
-                lblCategory.Text = $"分類：{comic.分類}";
-                lblISBN.Text = $"ISBN：{comic.ISBN}";
-                lblBorrowStatus.Text = $"借閱狀態：{comic.借閱狀態}";
-                lblReserveStatus.Text = $"預約狀態：{comic.預約狀態}";
-            }
+                this.Height = 725;
+                this.MinimumSize = new Size(550, 725);
+                this.MaximumSize = new Size(550, 725);
+            };
         }
 
         private async void ComicDetailsForm_Load(object sender, EventArgs e)
