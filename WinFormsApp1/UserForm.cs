@@ -1229,27 +1229,25 @@ namespace WinFormsApp1
         // 設定借閱紀錄欄位屬性和按鈕狀態
         private void SetBorrowGridSettingsAndButtonStatus()
         {
-            if (dgvBorrowRecord == null || dgvBorrowRecord.Columns.Count == 0) return; // 檢查 DataGridView 和 Columns 是否存在
+            if (dgvBorrowRecord == null || dgvBorrowRecord.Columns.Count == 0) return;
 
-            // 設定 DataGridView 屬性 (只設定一次，而不是每次數據綁定都設定)
             dgvBorrowRecord.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
             dgvBorrowRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
             dgvBorrowRecord.RowTemplate.Height = 36;
             dgvBorrowRecord.RowHeadersWidth = 60;
             dgvBorrowRecord.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
-            dgvBorrowRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            dgvBorrowRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvBorrowRecord.EnableHeadersVisualStyles = false;
             dgvBorrowRecord.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
 
-            // 重新添加欄位標題和寬度設定
-            var columnSettings = new Dictionary<string, (string Header, int Width)>
+            var columnSettings = new Dictionary<string, (string Header, int? Width, DataGridViewAutoSizeColumnMode Mode)>
             {
-                { "borrow_id", ("編號", 60) },
-                { "title", ("書名", 260) },
-                { "isbn", ("ISBN", 120) },
-                { "borrow_date", ("借閱日期", 180) },
-                { "return_date", ("歸還日期", 180) },
-                { "status", ("狀態", 80) }
+                { "borrow_id", ("編號", null, DataGridViewAutoSizeColumnMode.Fill) },
+                { "title", ("書名", 280, DataGridViewAutoSizeColumnMode.None) },
+                { "isbn", ("ISBN", null, DataGridViewAutoSizeColumnMode.Fill) },
+                { "borrow_date", ("借閱日期", null, DataGridViewAutoSizeColumnMode.Fill) },
+                { "return_date", ("歸還日期", null, DataGridViewAutoSizeColumnMode.Fill) },
+                { "status", ("狀態", null, DataGridViewAutoSizeColumnMode.Fill) }
             };
 
             foreach (var setting in columnSettings)
@@ -1258,7 +1256,11 @@ namespace WinFormsApp1
                 {
                     var col = dgvBorrowRecord.Columns[setting.Key];
                     col.HeaderText = setting.Value.Header;
-                    col.Width = setting.Value.Width;
+                    col.AutoSizeMode = setting.Value.Mode;
+                    if (setting.Value.Mode == DataGridViewAutoSizeColumnMode.None && setting.Value.Width.HasValue)
+                    {
+                        col.Width = setting.Value.Width.Value;
+                    }
                 }
             }
 
@@ -1270,40 +1272,132 @@ namespace WinFormsApp1
                 {
                     Name = "操作",
                     HeaderText = "操作",
-                    UseColumnTextForButtonValue = false, // 設定為 false，與預約紀錄一致
+                    UseColumnTextForButtonValue = false,
                     Width = 80
                 };
                 dgvBorrowRecord.Columns.Add(operationCol);
             }
             else
             {
-                operationCol.UseColumnTextForButtonValue = false; // 確保屬性正確設定為 false
+                operationCol.UseColumnTextForButtonValue = false;
             }
 
             // 根據狀態設定按鈕文字和啟用狀態
             foreach (DataGridViewRow row in dgvBorrowRecord.Rows)
             {
                 if (row.IsNewRow) continue;
-                
-                // 檢查是否存在狀態和操作欄位
                 var statusCell = row.Cells["status"];
                 var operationCell = row.Cells["操作"] as DataGridViewButtonCell;
-
-                   if (statusCell != null && operationCell != null)
-                   {
-                       string status = statusCell.Value?.ToString() ?? "";
-
-                       if (status == "未還")
-                       {
+                if (statusCell != null && operationCell != null)
+                {
+                    string status = statusCell.Value?.ToString() ?? "";
+                    if (status == "未還")
+                    {
                         operationCell.Value = "還書";
-                           operationCell.ReadOnly = false;
-                       }
-                       else
-                       {
+                        operationCell.ReadOnly = false;
+                    }
+                    else
+                    {
                         operationCell.Value = "已還";
-                           operationCell.ReadOnly = true;
-                       }
-                   }
+                        operationCell.ReadOnly = true;
+                    }
+                }
+            }
+        }
+
+        private void SetReserveGridSettingsAndButtonStatus()
+        {
+            if (dgvReserveRecord == null || dgvReserveRecord.Columns.Count == 0) return;
+
+            dgvReserveRecord.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
+            dgvReserveRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
+            dgvReserveRecord.RowTemplate.Height = 36;
+            dgvReserveRecord.RowHeadersWidth = 60;
+            dgvReserveRecord.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
+            dgvReserveRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvReserveRecord.EnableHeadersVisualStyles = false;
+            dgvReserveRecord.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+
+            var columnSettings = new List<(string Name, string Header, int? Width, DataGridViewAutoSizeColumnMode Mode)>()
+            {
+                ("reservation_id", "編號", null, DataGridViewAutoSizeColumnMode.Fill),
+                ("title", "書名", 280, DataGridViewAutoSizeColumnMode.None),
+                ("isbn", "ISBN", null, DataGridViewAutoSizeColumnMode.Fill),
+                ("reservation_date", "預約日期", null, DataGridViewAutoSizeColumnMode.Fill),
+                ("expiry_date", "到期日期", null, DataGridViewAutoSizeColumnMode.Fill),
+                ("status", "狀態", null, DataGridViewAutoSizeColumnMode.Fill)
+            };
+
+            foreach (var setting in columnSettings)
+            {
+                var col = dgvReserveRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == setting.Name);
+                if (col == null) continue;
+                col.HeaderText = setting.Header;
+                col.AutoSizeMode = setting.Mode;
+                if (setting.Mode == DataGridViewAutoSizeColumnMode.None && setting.Width.HasValue)
+                {
+                    col.Width = setting.Width.Value;
+                }
+            }
+
+            // 添加或獲取 "操作" 按鈕列
+            var operationCol = dgvReserveRecord.Columns.OfType<DataGridViewButtonColumn>().FirstOrDefault(c => c.Name == "操作");
+            if (operationCol == null)
+            {
+                operationCol = new DataGridViewButtonColumn
+                {
+                    Name = "操作",
+                    HeaderText = "操作",
+                    UseColumnTextForButtonValue = false,
+                    Width = 80,
+                };
+                dgvReserveRecord.Columns.Add(operationCol);
+            }
+            else
+            {
+                operationCol.UseColumnTextForButtonValue = false;
+            }
+
+            // 根據狀態設定按鈕文字和啟用狀態
+            foreach (DataGridViewRow row in dgvReserveRecord.Rows)
+            {
+                if (row.IsNewRow) continue;
+                var statusCell = row.Cells["status"];
+                var operationCell = row.Cells["操作"] as DataGridViewButtonCell;
+                if (statusCell != null && operationCell != null)
+                {
+                    string status = statusCell.Value?.ToString() ?? "";
+                    if (status == "預約中")
+                    {
+                        // 檢查是否是自己的預約 (避免非預約者看到取消按鈕)
+                        int reservationId = 0;
+                        if (dgvReserveRecord.Columns.Contains("reservation_id") && row.Cells["reservation_id"] != null && row.Cells["reservation_id"].Value != null) {
+                            int.TryParse(row.Cells["reservation_id"].Value.ToString(), out reservationId);
+                        }
+                        string sql = "SELECT user_id FROM reservation WHERE reservation_id = @rid";
+                        var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@rid", reservationId)
+                        });
+                        int reservedUserId = dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["user_id"]) : -1;
+                        if (reservedUserId == loggedInUserId)
+                        {
+                            operationCell.Value = "取消預約";
+                            operationCell.ReadOnly = false;
+                            if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.DarkBlue;
+                        } else
+                        {
+                            operationCell.Value = status;
+                            operationCell.ReadOnly = true;
+                            if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.Gray;
+                        }
+                    }
+                    else
+                    {
+                        operationCell.Value = status == "" ? "操作" : status;
+                        operationCell.ReadOnly = true;
+                        if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.Gray;
+                    }
+                }
             }
         }
 
@@ -2361,123 +2455,6 @@ LEFT JOIN (
             SetupFavoritePageLayout(); // 新增
         }
 
-        // This method seems to set up the settings for the reserve record DataGridView.
-        // It was called in DgvReserveRecord_DataBindingComplete and RefreshReserveRecordsAsync.
-        private void SetReserveGridSettingsAndButtonStatus()
-        {
-            if (dgvReserveRecord == null || dgvReserveRecord.Columns.Count == 0) return; // 檢查 DataGridView 和 Columns 是否存在
-
-            // 設定 DataGridView 屬性
-            dgvReserveRecord.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
-            dgvReserveRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
-            dgvReserveRecord.RowTemplate.Height = 36;
-            dgvReserveRecord.RowHeadersWidth = 60;
-            dgvReserveRecord.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
-            dgvReserveRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-            dgvReserveRecord.EnableHeadersVisualStyles = false;
-            dgvReserveRecord.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
-
-            // 定義期望的欄位順序、標題和寬度
-            var columnSettings = new List<(string Name, string Header, int Width)>()
-            {
-                ("reservation_id", "編號", 60),
-                ("title", "書名", 260),
-                ("isbn", "ISBN", 120),
-                ("reservation_date", "預約日期", 180),
-                ("expiry_date", "到期日期", 180), // 確保顯示到期日期
-                ("status", "狀態", 80)
-            };
-
-             // 隱藏所有現有欄位
-             foreach (DataGridViewColumn col in dgvReserveRecord.Columns) {
-                 col.Visible = false;
-             }
-
-            // 按定義的順序添加或獲取欄位，並設定屬性
-            int displayIndex = 0;
-            foreach (var setting in columnSettings)
-            {
-                var col = dgvReserveRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == setting.Name);
-                if (col != null)
-                {
-                    col.HeaderText = setting.Header;
-                    col.Width = setting.Width;
-                    col.DisplayIndex = displayIndex++;
-                    col.Visible = true; // 確保期望的欄位是可見的
-                }
-            }
-
-            // 添加或獲取 "操作" 按鈕列
-            var operationCol = dgvReserveRecord.Columns.OfType<DataGridViewButtonColumn>().FirstOrDefault(c => c.Name == "操作");
-            if (operationCol == null)
-            {
-                operationCol = new DataGridViewButtonColumn
-                {
-                    Name = "操作",
-                    HeaderText = "操作",
-                    UseColumnTextForButtonValue = false, // 使用 Value property
-                    Width = 80,
-                    DisplayIndex = displayIndex++
-                };
-                dgvReserveRecord.Columns.Add(operationCol);
-            } else
-            {
-                 operationCol.UseColumnTextForButtonValue = false; // 確保屬性正確設定
-                 operationCol.Visible = true; // 確保按鈕列可見
-                 operationCol.DisplayIndex = displayIndex++;
-            }
-
-            // 根據狀態設定按鈕文字和啟用狀態
-            foreach (DataGridViewRow row in dgvReserveRecord.Rows)
-            {
-                if (row.IsNewRow) continue;
-                // 檢查是否存在狀態和操作欄位
-                var statusCell = (dgvReserveRecord.Columns.Contains("status") && row.Cells["status"] != null) ? row.Cells["status"] : null;
-                var operationCell = (dgvReserveRecord.Columns.Contains("操作") && row.Cells["操作"] != null) ? row.Cells["操作"] as DataGridViewButtonCell : null;
-
-                if (statusCell != null && operationCell != null)
-                {
-                    string status = statusCell.Value?.ToString() ?? "";
-
-                    // 只有狀態為 "預約中" 且未過期的紀錄才顯示 "取消預約" 按鈕
-                    // 過期判斷已經在 SQL 查詢中處理 (reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR))
-                    if (status == "預約中")
-                    {
-                         // 檢查是否是自己的預約 (避免非預約者看到取消按鈕)
-                         int reservationId = 0;
-                         if (dgvReserveRecord.Columns.Contains("reservation_id") && row.Cells["reservation_id"] != null && row.Cells["reservation_id"].Value != null) {
-                             int.TryParse(row.Cells["reservation_id"].Value.ToString(), out reservationId);
-                         }
-
-                         // 查詢預約的 user_id
-                         string sql = "SELECT user_id FROM reservation WHERE reservation_id = @rid";
-                         var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
-                             new MySql.Data.MySqlClient.MySqlParameter("@rid", reservationId)
-                         });
-                         int reservedUserId = dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["user_id"]) : -1;
-
-                         if (reservedUserId == loggedInUserId)
-                         {
-                            operationCell.Value = "取消預約";
-                            operationCell.ReadOnly = false;
-                            if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.DarkBlue;
-                         } else
-                         {
-                              operationCell.Value = status; // 顯示狀態文字
-                              operationCell.ReadOnly = true;
-                              if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.Gray;
-                         }
-                    }
-                    else
-                    {
-                        operationCell.Value = status == "" ? "操作" : status; // 顯示狀態或預設文字
-                        operationCell.ReadOnly = true;
-                        if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.Gray;
-                    }
-                }
-            }
-        }
-
         // 處理借書/還書邏輯的方法
         // 根據目前的狀態執行借書或還書操作
         private async Task HandleRentAction(int comicId)
@@ -3049,10 +3026,11 @@ LEFT JOIN (
                 ("詳情", "詳情", 58),
                 ("收藏", "收藏", 58),
                 ("借閱狀態", "借閱狀態", 76),
-                ("預約狀態", "預約狀態", 76)
+                ("預約狀態", "預約狀態", 76),
+                ("跳到首頁", "跳到首頁", 76)
             };
 
-            // 僅新增詳情與收藏按鈕欄位
+            // 新增詳情、收藏、跳到首頁按鈕欄位
             if (dgvFavoriteRecord.Columns["詳情"] == null)
             {
                 var btnDetails = new DataGridViewButtonColumn
@@ -3077,6 +3055,18 @@ LEFT JOIN (
                 };
                 dgvFavoriteRecord.Columns.Add(btnFavorite);
             }
+            if (dgvFavoriteRecord.Columns["跳到首頁"] == null)
+            {
+                var btnJump = new DataGridViewButtonColumn
+                {
+                    Name = "跳到首頁",
+                    HeaderText = "跳到首頁",
+                    Text = "跳到首頁",
+                    UseColumnTextForButtonValue = false,
+                    Width = 76
+                };
+                dgvFavoriteRecord.Columns.Add(btnJump);
+            }
             // 強制移除借書與預約欄位（如果存在）
             while (dgvFavoriteRecord.Columns["借書"] != null)
                 dgvFavoriteRecord.Columns.Remove("借書");
@@ -3100,7 +3090,7 @@ LEFT JOIN (
                             col.DataPropertyName = setting.Name;
                         }
                         col.DisplayIndex = displayIndex++;
-                        if (setting.Name == "詳情" || setting.Name == "收藏")
+                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "收藏" || setting.Name == "跳到首頁")
                         {
                             col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
                         }
@@ -3226,6 +3216,15 @@ LEFT JOIN (
 
                         // 顯示彈窗
                         detailsForm.ShowDialog(this);
+                    }
+                }
+                else if (columnName == "跳到首頁")
+                {
+                    string comicTitle = dgv.Rows[e.RowIndex].Cells["書名"].Value?.ToString() ?? "";
+                    if (!string.IsNullOrEmpty(comicTitle))
+                    {
+                        tabUserMain.SelectedTab = tabPageHome;
+                        await RefreshUserComicsGrid(comicTitle, "書名");
                     }
                 }
                 // 其他按鈕（借書、預約）的邏輯暫不在此處理，留待後續步驟
