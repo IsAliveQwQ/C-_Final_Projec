@@ -8,6 +8,14 @@ namespace WinFormsApp1
         /// </summary>
         private System.ComponentModel.IContainer components = null;
 
+        // 收藏紀錄分頁相關欄位
+        private System.Windows.Forms.TabPage tabPageFavorite;
+        private System.Windows.Forms.DataGridView dgvFavoriteRecord;
+        private System.Windows.Forms.Button btnFavoritePrev, btnFavoriteNext;
+        private System.Windows.Forms.Label lblFavoritePage;
+        private int currentFavoritePage = 1;
+        private const int FavoritePageSize = 10;
+
         /// <summary>
         ///  Clean up any resources being used.
         ///  清理所有正在使用的資源。

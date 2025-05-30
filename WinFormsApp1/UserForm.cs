@@ -36,6 +36,7 @@ namespace WinFormsApp1
         private string loggedInUserRole = ""; // 用於儲存登入使用者的用戶角色
         private int currentBorrowPage = 1;
         private int currentReservePage = 1;
+        // private int currentFavoritePage = 1; // ← 只保留 Designer.cs 宣告
         private const int PageSize = 10; // 每頁顯示 10 筆資料
         private int currentComicPage = 1;  // 新增：首頁漫畫列表當前頁碼
         private const int ComicPageSize = 10;  // 新增：首頁每頁顯示筆數
@@ -55,8 +56,10 @@ namespace WinFormsApp1
         // 添加緩存相關字段
         private DataTable cachedBorrowRecords = null;
         private DataTable cachedReserveRecords = null;
+        private DataTable cachedFavoriteRecords = null;
         private DateTime lastBorrowRefresh = DateTime.MinValue;
         private DateTime lastReserveRefresh = DateTime.MinValue;
+        private DateTime lastFavoriteRefresh = DateTime.MinValue;
         private const int CACHE_DURATION_SECONDS = 30; // 緩存有效期30秒
 
         // MinIO 連線資訊 (建議移至設定檔)
@@ -1482,6 +1485,20 @@ LEFT JOIN (
                             SetReserveGridSettingsAndButtonStatus();
                         }
                         break;
+                    case "收藏紀錄":
+                        // 檢查緩存是否有效
+                        if (cachedFavoriteRecords == null || 
+                            (DateTime.Now - lastFavoriteRefresh).TotalSeconds > CACHE_DURATION_SECONDS)
+                        {
+                            await RefreshFavoriteRecordsAsync();
+                        }
+                        else
+                        {
+                            // 使用緩存數據
+                            dgvFavoriteRecord.DataSource = cachedFavoriteRecords;
+                            SetUserComicsGridColumnSettingsForFavorite();
+                        }
+                        break;
                     case "會員中心":
                         break;
                 }
@@ -1681,6 +1698,68 @@ LEFT JOIN (
             tabPageReserve.Controls.Add(panelSearch);
         }
 
+        // 新增：收藏紀錄分頁 UI 組裝
+        private void SetupFavoritePageLayout()
+        {
+            tabPageFavorite.Controls.Clear();
+            // 搜尋區
+            var panelSearch = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = System.Drawing.Color.WhiteSmoke };
+            var labelSearch = new Label { Text = "搜尋：", Location = new System.Drawing.Point(10, 10), Size = new System.Drawing.Size(60, 20), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            var txtSearch = new TextBox { Name = "txtFavoriteSearch", Location = new System.Drawing.Point(70, 6), Size = new System.Drawing.Size(180, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            var btnSearch = new Button { Name = "btnFavoriteSearch", Text = "搜尋", Location = new System.Drawing.Point(260, 6), Size = new System.Drawing.Size(60, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            btnSearch.Click += async (s, e) => { currentFavoritePage = 1; await RefreshFavoriteRecordsAsync(txtSearch.Text); };
+            panelSearch.Controls.Add(labelSearch);
+            panelSearch.Controls.Add(txtSearch);
+            panelSearch.Controls.Add(btnSearch);
+
+            // 分頁區
+            var panelPaging = new Panel { Dock = DockStyle.Bottom, Height = 40, BackColor = System.Drawing.Color.WhiteSmoke };
+            btnFavoritePrev = new Button { Name = "btnFavoritePrev", Text = "上一頁", Location = new System.Drawing.Point(10, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            lblFavoritePage = new Label { Name = "lblFavoritePage", Text = "第 1 頁", Location = new System.Drawing.Point(100, 10), Size = new System.Drawing.Size(100, 20), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F), TextAlign = ContentAlignment.MiddleCenter };
+            btnFavoriteNext = new Button { Name = "btnFavoriteNext", Text = "下一頁", Location = new System.Drawing.Point(210, 6), Size = new System.Drawing.Size(80, 27), Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F) };
+            btnFavoritePrev.Click += async (s, e) => { if (currentFavoritePage > 1) { currentFavoritePage--; await RefreshFavoriteRecordsAsync(); } };
+            btnFavoriteNext.Click += async (s, e) => { currentFavoritePage++; await RefreshFavoriteRecordsAsync(); };
+            panelPaging.Controls.Add(btnFavoritePrev);
+            panelPaging.Controls.Add(lblFavoritePage);
+            panelPaging.Controls.Add(btnFavoriteNext);
+
+            // DataGridView
+            dgvFavoriteRecord = new DataGridView
+            {
+                Name = "dgvFavoriteRecord",
+                Dock = DockStyle.Fill,
+                AllowUserToAddRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F),
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold),
+                    BackColor = System.Drawing.Color.WhiteSmoke
+                },
+                RowTemplate = { Height = 36 },
+                RowHeadersWidth = 60,
+                ColumnHeadersHeight = 24,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                EnableHeadersVisualStyles = false,
+                BackgroundColor = System.Drawing.Color.White,
+                ScrollBars = ScrollBars.Vertical
+            };
+            typeof(DataGridView).InvokeMember(
+                "DoubleBuffered",
+                System.Reflection.BindingFlags.SetProperty |
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic,
+                null,
+                dgvFavoriteRecord,
+                new object[] { true });
+            tabPageFavorite.Controls.Add(dgvFavoriteRecord);
+            tabPageFavorite.Controls.Add(panelPaging);
+            tabPageFavorite.Controls.Add(panelSearch);
+        }
+
         // 記錄上次操作的 comicId 以便刷新後自動選中
         private int lastActionComicId = 0;
 
@@ -1849,7 +1928,7 @@ LEFT JOIN (
                     Name = "收藏",
                     HeaderText = "收藏",
                     Text = "收藏", // 預設按鈕文字
-                    UseColumnTextForButtonValue = true, // 使用 Value property
+                    UseColumnTextForButtonValue = false, // 修正：必須為 false 才能動態顯示 cell.Value
                     Width = 58 // 使用新的寬度
                 };
                 dgvUserComics.Columns.Add(btnFavorite);
@@ -1937,6 +2016,7 @@ LEFT JOIN (
             // 一次性獲取所有冷卻期和狀態數據
             var borrowCoolingSet = GetUserBorrowCoolingComicIds();
             var reserveCoolingSet = GetUserReserveCoolingComicIds();
+            var favoriteSet = GetUserFavoriteComicIds(); // 新增：一次查出所有已收藏漫畫ID
 
             foreach (DataGridViewRow row in dgvUserComics.Rows)
             {
@@ -2003,6 +2083,22 @@ LEFT JOIN (
                         cellReserve.ReadOnly = reserveCoolingSet.Contains(comicId);
                     }
                 }
+
+                // 收藏按鈕狀態
+                var cellFavorite = row.Cells["收藏"] as DataGridViewButtonCell;
+                if (cellFavorite != null)
+                {
+                    if (favoriteSet.Contains(comicId))
+                    {
+                        cellFavorite.Value = "已收藏";
+                        cellFavorite.Style.ForeColor = System.Drawing.Color.Red;
+                    }
+                    else
+                    {
+                        cellFavorite.Value = "收藏";
+                        cellFavorite.Style.ForeColor = System.Drawing.Color.Black;
+                    }
+                }
             }
 
             // 如果有上次操作的漫畫，自動選中
@@ -2027,7 +2123,7 @@ LEFT JOIN (
             }
         }
 
-        // DataGridView 按鈕點擊事件：根據欄位與行資料執行借書/預約邏輯
+        // DataGridView 按鈕點擊事件：根據欄位與行資料執行借書/預約/收藏邏輯
         private async void DgvUserComics_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
@@ -2049,6 +2145,60 @@ LEFT JOIN (
                         // 顯示彈窗
                         detailsForm.ShowDialog(this);
                     }
+                }
+                else if (columnName == "收藏")
+                {
+                    // 收藏/取消收藏
+                    bool isNowFavorite = false;
+                    // 先查詢目前狀態
+                    string checkSql = "SELECT 1 FROM user_favorites WHERE user_id = @uid AND comic_id = @cid LIMIT 1";
+                    var dt = DBHelper.ExecuteQuery(checkSql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    });
+                    if (dt.Rows.Count > 0)
+                    {
+                        // 取消收藏
+                        DBHelper.ExecuteNonQuery("DELETE FROM user_favorites WHERE user_id = @uid AND comic_id = @cid",
+                            new MySql.Data.MySqlClient.MySqlParameter[] {
+                                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                                new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                            });
+                        MessageBox.Show("取消收藏成功！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        isNowFavorite = false;
+                    }
+                    else
+                    {
+                        // 加入收藏
+                        DBHelper.ExecuteNonQuery("INSERT INTO user_favorites (user_id, comic_id) VALUES (@uid, @cid)",
+                            new MySql.Data.MySqlClient.MySqlParameter[] {
+                                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                                new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                            });
+                        MessageBox.Show("收藏成功！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        isNowFavorite = true;
+                    }
+                    // 再查詢一次最新狀態，確保UI與資料庫一致
+                    string checkAgainSql = "SELECT 1 FROM user_favorites WHERE user_id = @uid AND comic_id = @cid LIMIT 1";
+                    var dtAgain = DBHelper.ExecuteQuery(checkAgainSql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    });
+                    var cellFavorite = dgvUserComics.Rows[e.RowIndex].Cells["收藏"] as DataGridViewButtonCell;
+                    if (cellFavorite != null)
+                    {
+                        if (dtAgain.Rows.Count > 0)
+                        {
+                            cellFavorite.Value = "已收藏";
+                            cellFavorite.Style.ForeColor = System.Drawing.Color.Red;
+                        }
+                        else
+                        {
+                            cellFavorite.Value = "收藏";
+                            cellFavorite.Style.ForeColor = System.Drawing.Color.Black;
+                        }
+                    }
+                    return;
                 }
             }
             else if (e.RowIndex < 0 || dgvUserComics.CurrentRow == null) return;
@@ -2165,6 +2315,8 @@ LEFT JOIN (
             tabPageBorrow.Name = "tabPageBorrow";
             tabPageReserve = new TabPage("預約紀錄");
             tabPageReserve.Name = "tabPageReserve";
+            tabPageFavorite = new TabPage("收藏紀錄"); // 新增
+            tabPageFavorite.Name = "tabPageFavorite";
 
             // 初始化 TabControl
             tabUserMain = new TabControl();
@@ -2173,6 +2325,7 @@ LEFT JOIN (
             tabUserMain.TabPages.Add(tabPageHome);
             tabUserMain.TabPages.Add(tabPageBorrow);
             tabUserMain.TabPages.Add(tabPageReserve);
+            tabUserMain.TabPages.Add(tabPageFavorite); // 新增
 
             // 加入主表單控制項
             this.Controls.Add(tabUserMain);
@@ -2182,6 +2335,7 @@ LEFT JOIN (
             SetupHomePageLayout();
             SetupBorrowPageLayout();
             SetupReservePageLayout();
+            SetupFavoritePageLayout(); // 新增
         }
 
         // This method seems to set up the settings for the reserve record DataGridView.
@@ -2760,6 +2914,134 @@ LEFT JOIN (
             {
                 MessageBox.Show("獲取漫畫詳細資訊時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
+            }
+        }
+
+        // 一次查出目前用戶所有已收藏漫畫ID
+        private HashSet<int> GetUserFavoriteComicIds()
+        {
+            var result = new HashSet<int>();
+            string sql = "SELECT comic_id FROM user_favorites WHERE user_id = @uid";
+            var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+            });
+            foreach (DataRow row in dt.Rows)
+            {
+                result.Add(Convert.ToInt32(row["comic_id"]));
+            }
+            return result;
+        }
+
+        // 新增：收藏紀錄分頁資料查詢與刷新
+        private async Task RefreshFavoriteRecordsAsync(string searchTerm = "")
+        {
+            try
+            {
+                // 在後台執行數據查詢
+                var dt = await Task.Run(() => {
+                    string sql = @"SELECT 
+                        c.comic_id AS 書號, 
+                        c.isbn AS ISBN, 
+                        c.title AS 書名, 
+                        c.author AS 作者, 
+                        c.publisher AS 出版社, 
+                        c.category AS 分類,
+                        c.image_path AS 圖片URL,
+                        CASE WHEN br.comic_id IS NOT NULL THEN '已被借' ELSE '未被借' END AS 借閱狀態,
+                        CASE
+                            WHEN br.comic_id IS NOT NULL THEN '不可預約'
+                            WHEN r.comic_id IS NOT NULL THEN '已被預約'
+                            ELSE '可預約'
+                        END AS 預約狀態,
+                        br.user_id AS borrowed_by,
+                        r.user_id AS reserved_by
+                    FROM user_favorites uf
+                    JOIN comic c ON uf.comic_id = c.comic_id
+                    LEFT JOIN borrow_record br ON c.comic_id = br.comic_id AND br.return_date IS NULL
+                    LEFT JOIN (
+                        SELECT comic_id, user_id 
+                        FROM reservation 
+                        WHERE status = 'active' 
+                        AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                    ) r ON c.comic_id = r.comic_id
+                    WHERE uf.user_id = @uid";
+                    var paramList = new List<MySqlParameter> { new MySqlParameter("@uid", loggedInUserId) };
+                    if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        sql += " AND (c.comic_id LIKE @kw OR c.title LIKE @kw OR c.author LIKE @kw OR c.category LIKE @kw OR c.isbn LIKE @kw OR c.publisher LIKE @kw)";
+                        paramList.Add(new MySqlParameter("@kw", "%" + searchTerm + "%"));
+                    }
+                    sql += " ORDER BY c.comic_id LIMIT @offset, @pageSize";
+                    paramList.Add(new MySqlParameter("@offset", (currentFavoritePage - 1) * FavoritePageSize));
+                    paramList.Add(new MySqlParameter("@pageSize", FavoritePageSize));
+                    return DBHelper.ExecuteQuery(sql, paramList.ToArray());
+                });
+                cachedFavoriteRecords = dt;
+                lastFavoriteRefresh = DateTime.Now;
+                await this.InvokeAsync(() => {
+                    dgvFavoriteRecord.DataSource = dt;
+                    SetUserComicsGridColumnSettingsForFavorite();
+                    lblFavoritePage.Text = $"第 {currentFavoritePage} 頁";
+                    btnFavoritePrev.Enabled = currentFavoritePage > 1;
+                });
+                // 查詢總記錄數
+                await Task.Run(async () => {
+                    string countSql = "SELECT COUNT(*) FROM user_favorites uf JOIN comic c ON uf.comic_id = c.comic_id WHERE uf.user_id = @uid";
+                    var countParamList = new List<MySqlParameter> { new MySqlParameter("@uid", loggedInUserId) };
+                    if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        countSql += " AND (c.comic_id LIKE @kw OR c.title LIKE @kw OR c.author LIKE @kw OR c.category LIKE @kw OR c.isbn LIKE @kw OR c.publisher LIKE @kw)";
+                        countParamList.Add(new MySqlParameter("@kw", "%" + searchTerm + "%"));
+                    }
+                    long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, countParamList.ToArray()));
+                    await this.InvokeAsync(() => {
+                        btnFavoriteNext.Enabled = (currentFavoritePage * FavoritePageSize) < totalRecords;
+                    });
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("載入收藏紀錄時發生錯誤：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // 新增：設定收藏紀錄分頁欄位樣式（與首頁一致）
+        private void SetUserComicsGridColumnSettingsForFavorite()
+        {
+            if (dgvFavoriteRecord == null || dgvFavoriteRecord.Columns.Count == 0) return;
+            var columnSettings = new List<(string Name, string Header, int Width)>()
+            {
+                ("書號", "編號", 70),
+                ("ISBN", "ISBN", 70),
+                ("書名", "書名", 175),
+                ("作者", "作者", 80),
+                ("出版社", "出版社", 90),
+                ("分類", "分類", 59),
+                ("借閱狀態", "借閱狀態", 76),
+                ("預約狀態", "預約狀態", 76)
+            };
+            var currentColumns = dgvFavoriteRecord.Columns.OfType<DataGridViewColumn>().ToList();
+            int displayIndex = 0;
+            foreach (var setting in columnSettings)
+            {
+                var col = currentColumns.FirstOrDefault(c => c.Name == setting.Name);
+                if (col != null)
+                {
+                    col.HeaderText = setting.Header;
+                    col.Width = setting.Width;
+                    col.DisplayIndex = displayIndex++;
+                }
+            }
+            foreach (var col in currentColumns)
+            {
+                if (!columnSettings.Any(setting => setting.Name == col.Name))
+                {
+                    col.Visible = false;
+                }
+                else
+                {
+                    col.Visible = true;
+                }
             }
         }
     }
