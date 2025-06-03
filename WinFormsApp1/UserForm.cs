@@ -3036,7 +3036,7 @@ LEFT JOIN (
                 ("收藏", "收藏", 60), // 修改：固定寬度 60
                 ("借閱狀態", "借閱狀態", 90), // 修改：固定寬度 90
                 ("預約狀態", "預約狀態", 90), // 修改：固定寬度 90
-                ("跳到首頁", "跳到首頁", 90) // 修改：固定寬度 90
+                ("回首頁", "回首頁", 90) // 修改：將 "跳到首頁" 改為 "回首頁"
             };
 
             // Add button columns if they don't exist yet
@@ -3064,14 +3064,14 @@ LEFT JOIN (
                 };
                 dgvFavoriteRecord.Columns.Add(btnFavorite);
             }
-            if (dgvFavoriteRecord.Columns["跳到首頁"] == null)
+            if (dgvFavoriteRecord.Columns["回首頁"] == null) // 修改：檢查 "回首頁" 欄位
             {
                 var btnJump = new DataGridViewButtonColumn
                 {
-                    Name = "跳到首頁",
-                    HeaderText = "跳到首頁",
-                    Text = "跳到首頁",
-                    UseColumnTextForButtonValue = true, // 修改這裡，讓按鈕顯示 Text 屬性的文字
+                    Name = "回首頁", // 修改：將 "跳到首頁" 改為 "回首頁"
+                    HeaderText = "回首頁", // 修改：將 "跳到首頁" 改為 "回首頁"
+                    Text = "回首頁", // 修改：將 "跳到首頁" 改為 "回首頁"
+                    UseColumnTextForButtonValue = true,
                     Width = 90 // 修改：固定寬度 90
                 };
                 dgvFavoriteRecord.Columns.Add(btnJump);
@@ -3109,7 +3109,7 @@ LEFT JOIN (
                             col.DataPropertyName = setting.Name;
                         }
                         col.DisplayIndex = displayIndex++;
-                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "跳到首頁") // 添加跳到首頁按鈕置中
+                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "回首頁") // 修改：將 "跳到首頁" 改為 "回首頁"
                         {
                             col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
                         }
@@ -3230,14 +3230,29 @@ LEFT JOIN (
                         // 建立新的 ComicDetailsForm 實例
                         var detailsForm = new ComicDetailsForm(comic);
 
-                        // 設定彈窗大小（可以參考主頁的設置）
-                        // detailsForm.Size = new Size(this.Width / 2, this.Height);
-
                         // 顯示彈窗
                         detailsForm.ShowDialog(this);
+
+                        // 切換到首頁分頁
+                        tabUserMain.SelectedTab = tabPageHome;
+
+                        // 獲取首頁的搜尋控制項
+                        var homeTabPage = tabUserMain.TabPages["tabPageHome"];
+                        var txtSearch = homeTabPage.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<TextBox>().FirstOrDefault(c => c.Name == "txtSearch");
+                        var cmbSearchType = homeTabPage.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<ComboBox>().FirstOrDefault(c => c.Name == "cmbSearchType");
+
+                        if (txtSearch != null && cmbSearchType != null)
+                        {
+                            // 設定搜尋條件
+                            txtSearch.Text = comic.書名;
+                            cmbSearchType.SelectedItem = "書名";
+
+                            // 執行搜尋
+                            await RefreshUserComicsGrid(comic.書名, "書名");
+                        }
                     }
                 }
-                else if (columnName == "跳到首頁")
+                else if (columnName == "回首頁") // 修改：將 "跳到首頁" 改為 "回首頁"
                 {
                     string comicTitle = dgv.Rows[e.RowIndex].Cells["書名"].Value?.ToString() ?? "";
                     if (!string.IsNullOrEmpty(comicTitle))

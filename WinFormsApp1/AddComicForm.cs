@@ -17,6 +17,8 @@ namespace WinFormsApp1
         private const string MinioSecretKey = "Lq4ijpczUkbRznusbOAm0hOWiXLRBdQDb16fJQgbcPH3Q0Xn";
         private const string BucketName = "comicimage";
         private OpenFileDialog openFileDialog;
+        private bool isFirstEnter = true;
+        private bool isFirstClick = true;
 
         public AddComicForm()
         {
@@ -181,12 +183,20 @@ namespace WinFormsApp1
 
         private void TxtOfferDate_Enter(object sender, EventArgs e)
         {
-            ((MaskedTextBox)sender).SelectionStart = 0;
+            if (isFirstEnter)
+            {
+                ((MaskedTextBox)sender).SelectionStart = 0;
+                isFirstEnter = false;
+            }
         }
 
         private void TxtOfferDate_MouseClick(object sender, MouseEventArgs e)
         {
-            ((MaskedTextBox)sender).SelectionStart = 0;
+            if (isFirstClick)
+            {
+                ((MaskedTextBox)sender).SelectionStart = 0;
+                isFirstClick = false;
+            }
         }
     }
 } 
