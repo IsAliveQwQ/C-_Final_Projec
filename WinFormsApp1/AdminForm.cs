@@ -740,16 +740,8 @@ namespace WinFormsApp1
                         "ISBN" => "c.isbn",
                         _ => "u.username"
                     };
-                    if (currentBorrowSearchType == "用戶")
-                    {
-                        sql += $" AND {field} = @keyword";
-                        paramList.Add(new MySqlParameter("@keyword", currentBorrowSearchKeyword));
-                    }
-                    else
-                    {
-                        sql += $" AND {field} LIKE @keyword";
-                        paramList.Add(new MySqlParameter("@keyword", "%" + currentBorrowSearchKeyword + "%"));
-                    }
+                    sql += $" AND {field} = @keyword";
+                    paramList.Add(new MySqlParameter("@keyword", currentBorrowSearchKeyword));
                 }
 
                 // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE
@@ -830,16 +822,8 @@ namespace WinFormsApp1
                         "ISBN" => "c.isbn",
                         _ => "u.username"
                     };
-                    if (currentReserveSearchType == "用戶")
-                    {
-                        sql += $" AND {field} = @keyword";
-                        paramList.Add(new MySqlParameter("@keyword", currentReserveSearchKeyword));
-                    }
-                    else
-                    {
-                        sql += $" AND {field} LIKE @keyword";
-                        paramList.Add(new MySqlParameter("@keyword", "%" + currentReserveSearchKeyword + "%"));
-                    }
+                    sql += $" AND {field} = @keyword";
+                    paramList.Add(new MySqlParameter("@keyword", currentReserveSearchKeyword));
                 }
 
                 // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE
