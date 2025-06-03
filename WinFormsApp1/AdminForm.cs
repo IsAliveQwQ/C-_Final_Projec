@@ -181,7 +181,16 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("漫畫新增成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             await RefreshComicRecordsAsync();
-                            WriteLogEntry("新增漫畫", $"書名={title}, ISBN={isbn}, 作者={author}, 出版社={publisher}, 分類={category}");
+                            int newComicId = 0;
+                            using (var conn = new MySql.Data.MySqlClient.MySqlConnection(DBHelper.GetConnectionString()))
+                            {
+                                conn.Open();
+                                using (var cmd = new MySql.Data.MySqlClient.MySqlCommand("SELECT LAST_INSERT_ID()", conn))
+                                {
+                                    newComicId = Convert.ToInt32(cmd.ExecuteScalar());
+                                }
+                            }
+                            WriteLogEntry("新增漫畫", $"新增了漫畫id:{newComicId}的漫畫");
                             await RefreshLogRecordsAsync();
                         }
                         else
@@ -245,7 +254,8 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show($"新增用戶成功！帳號：{username} (資料庫：{GetCurrentDatabaseName()})", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             await RefreshUserRecordsAsync();
-                            WriteLogEntry("新增用戶", $"uid:{GetInsertedUserId(username)} 用戶名:{username}被新增");
+                            int newUserId = GetInsertedUserId(username);
+                            WriteLogEntry("新增用戶", $"新增了uid:{newUserId}的用戶");
                             await RefreshLogRecordsAsync();
                         }
                         else
@@ -324,7 +334,7 @@ namespace WinFormsApp1
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        WriteLogEntry("刪除用戶", $"uid:{userId} 原用戶名:{deletedUserName}被刪除");
+                        WriteLogEntry("刪除用戶", $"刪除了uid:{userId}的用戶");
                         await RefreshLogRecordsAsync();
                         AdminForm_Load(null, null);
                     }
@@ -529,7 +539,7 @@ namespace WinFormsApp1
                     if (rows > 0)
                     {
                         MessageBox.Show("刪除成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        WriteLogEntry("刪除漫畫", $"{oldTitle}漫畫被刪除");
+                        WriteLogEntry("刪除漫畫", $"刪除了漫畫id:{comicId}的漫畫");
                         await RefreshLogRecordsAsync();
                         RefreshComicRecordsAsync();
                     }
@@ -1151,28 +1161,27 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("漫畫修改成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             RefreshComicRecordsAsync();
-                            // 精簡中文日誌
                             List<string> changes = new List<string>();
                             if (oldTitle != editComicForm.ComicTitle)
-                                changes.Add($"書名 由 {oldTitle} 改為 {editComicForm.ComicTitle}");
+                                changes.Add($"書名由{oldTitle}改為{editComicForm.ComicTitle}");
                             if (oldIsbn != editComicForm.ComicISBN)
-                                changes.Add($"ISBN 由 {oldIsbn} 改為 {editComicForm.ComicISBN}");
+                                changes.Add($"ISBN由{oldIsbn}改為{editComicForm.ComicISBN}");
                             if (oldAuthor != editComicForm.ComicAuthor)
-                                changes.Add($"作者 由 {oldAuthor} 改為 {editComicForm.ComicAuthor}");
+                                changes.Add($"作者由{oldAuthor}改為{editComicForm.ComicAuthor}");
                             if (oldPublisher != editComicForm.ComicPublisher)
-                                changes.Add($"出版社 由 {oldPublisher} 改為 {editComicForm.ComicPublisher}");
+                                changes.Add($"出版社由{oldPublisher}改為{editComicForm.ComicPublisher}");
                             if (oldCategory != editComicForm.ComicCategory)
-                                changes.Add($"分類 由 {oldCategory} 改為 {editComicForm.ComicCategory}");
+                                changes.Add($"分類由{oldCategory}改為{editComicForm.ComicCategory}");
                             if (oldImagePath != editComicForm.ImageUrl)
-                                changes.Add("更新了漫畫圖片");
+                                changes.Add($"更新了漫畫id:{comicId}的圖片");
                             if (oldOfferDate != editComicForm.OfferDate)
-                                changes.Add($"發售日 由 {oldOfferDate} 改為 {editComicForm.OfferDate}");
+                                changes.Add($"發售日由{oldOfferDate}改為{editComicForm.OfferDate}");
                             if (oldPages != editComicForm.Pages)
-                                changes.Add($"頁數 由 {oldPages} 改為 {editComicForm.Pages}");
+                                changes.Add($"頁數由{oldPages}改為{editComicForm.Pages}");
                             if (oldBookSummary != editComicForm.BookSummary)
-                                changes.Add($"摘要 由 {oldBookSummary} 改為 {editComicForm.BookSummary}");
+                                changes.Add($"摘要由{oldBookSummary}改為{editComicForm.BookSummary}");
                             if (changes.Count > 0)
-                                WriteLogEntry("編輯漫畫", string.Join(", ", changes));
+                                WriteLogEntry("編輯漫畫", $"修改了漫畫id:{comicId}的漫畫，" + string.Join("，", changes));
                             await RefreshLogRecordsAsync();
                         }
                         else
@@ -1350,16 +1359,15 @@ namespace WinFormsApp1
                         {
                             MessageBox.Show("用戶修改成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             await RefreshUserRecordsAsync();
-                            // 統一精簡中文日誌格式
                             List<string> changes = new List<string>();
                             if (oldUsername != editUserForm.Username)
-                                changes.Add($"用戶名:{oldUsername}被修改為{editUserForm.Username}");
+                                changes.Add($"用戶名由{oldUsername}改為{editUserForm.Username}");
                             if (oldStatus != editUserForm.Status)
-                                changes.Add($"狀態:{oldStatus}被修改為{editUserForm.Status}");
+                                changes.Add($"狀態由{oldStatus}改為{editUserForm.Status}");
                             if (!string.IsNullOrWhiteSpace(editUserForm.Password))
                                 changes.Add($"密碼被修改");
                             if (changes.Count > 0)
-                                WriteLogEntry("編輯用戶", $"uid:{userId} 原" + string.Join("，", changes));
+                                WriteLogEntry("編輯用戶", $"修改了uid:{userId}的用戶，" + string.Join("，", changes));
                             await RefreshLogRecordsAsync();
                         }
                         else
