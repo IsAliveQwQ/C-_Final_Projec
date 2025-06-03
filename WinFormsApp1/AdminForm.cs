@@ -1326,16 +1326,17 @@ namespace WinFormsApp1
             }
 
             // 查詢原始資料
-            string sqlQuery = "SELECT username, status FROM user WHERE user_id = @uid";
+            string sqlQuery = "SELECT username, status, password_hash FROM user WHERE user_id = @uid";
             MySqlParameter[] pQuery = { new MySqlParameter("@uid", userId) };
             var dt = DBHelper.ExecuteQuery(sqlQuery, pQuery);
-            string oldUsername = username, oldStatus = status;
+            string oldUsername = username, oldStatus = status, oldPassword = "";
             if (dt.Rows.Count > 0)
             {
                 oldUsername = dt.Rows[0]["username"].ToString();
                 oldStatus = dt.Rows[0]["status"].ToString() == "active" ? "正常" : "凍結";
+                oldPassword = dt.Rows[0]["password_hash"].ToString();
             }
-            using (EditUserForm editUserForm = new EditUserForm(userId, username, status))
+            using (EditUserForm editUserForm = new EditUserForm(userId, username, status, oldPassword))
             {
                 if (editUserForm.ShowDialog() == DialogResult.OK)
                 {

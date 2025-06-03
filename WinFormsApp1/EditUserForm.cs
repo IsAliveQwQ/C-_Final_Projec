@@ -12,7 +12,7 @@ namespace WinFormsApp1
 
         private int userId;
 
-        public EditUserForm(int userId, string username, string status)
+        public EditUserForm(int userId, string username, string status, string password)
         {
             InitializeComponent();
             this.userId = userId;
@@ -24,6 +24,7 @@ namespace WinFormsApp1
 
             // 初始化控件
             txtUsername.Text = username;
+            txtPassword.Text = password;
             cmbStatus.Items.AddRange(new string[] { "正常", "凍結" });
             cmbStatus.SelectedItem = status == "正常" ? "正常" : "凍結";
 
@@ -43,10 +44,10 @@ namespace WinFormsApp1
         {
             string newUsername = txtUsername.Text.Trim();
             string newPassword = txtPassword.Text.Trim();
-            string status = cmbStatus.SelectedItem.ToString();
-            if (string.IsNullOrWhiteSpace(newUsername))
+            string status = cmbStatus.SelectedItem?.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(newUsername) || string.IsNullOrWhiteSpace(newPassword) || string.IsNullOrWhiteSpace(status))
             {
-                MessageBox.Show("請輸入用戶名！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("所有欄位皆必填！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             // 用戶名長度與格式
