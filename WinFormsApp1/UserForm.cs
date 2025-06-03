@@ -3036,7 +3036,7 @@ LEFT JOIN (
                 ("收藏", "收藏", 60), // 修改：固定寬度 60
                 ("借閱狀態", "借閱狀態", 90), // 修改：固定寬度 90
                 ("預約狀態", "預約狀態", 90), // 修改：固定寬度 90
-                ("回首頁", "回首頁", 90) // 修改：將 "跳到首頁" 改為 "回首頁"
+                ("回首頁", "在首頁搜尋", 90) // 修改：將標題文字和按鈕文字改為 "在首頁搜尋"
             };
 
             // Add button columns if they don't exist yet
@@ -3064,13 +3064,13 @@ LEFT JOIN (
                 };
                 dgvFavoriteRecord.Columns.Add(btnFavorite);
             }
-            if (dgvFavoriteRecord.Columns["回首頁"] == null) // 修改：檢查 "回首頁" 欄位
+            if (dgvFavoriteRecord.Columns["回首頁"] == null)
             {
                 var btnJump = new DataGridViewButtonColumn
                 {
-                    Name = "回首頁", // 修改：將 "跳到首頁" 改為 "回首頁"
-                    HeaderText = "回首頁", // 修改：將 "跳到首頁" 改為 "回首頁"
-                    Text = "回首頁", // 修改：將 "跳到首頁" 改為 "回首頁"
+                    Name = "回首頁",
+                    HeaderText = "在首頁搜尋", // 修改：將標題文字改為 "在首頁搜尋"
+                    Text = "在首頁搜尋", // 修改：將按鈕文字改為 "在首頁搜尋"
                     UseColumnTextForButtonValue = true,
                     Width = 90 // 修改：固定寬度 90
                 };
@@ -3109,7 +3109,7 @@ LEFT JOIN (
                             col.DataPropertyName = setting.Name;
                         }
                         col.DisplayIndex = displayIndex++;
-                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "回首頁") // 修改：將 "跳到首頁" 改為 "回首頁"
+                        if (setting.Name == "詳情" || setting.Name == "收藏" || setting.Name == "回首頁")
                         {
                             col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
                         }
@@ -3252,13 +3252,28 @@ LEFT JOIN (
                         }
                     }
                 }
-                else if (columnName == "回首頁") // 修改：將 "跳到首頁" 改為 "回首頁"
+                else if (columnName == "回首頁") // 處理 "回首頁" 按鈕點擊
                 {
                     string comicTitle = dgv.Rows[e.RowIndex].Cells["書名"].Value?.ToString() ?? "";
                     if (!string.IsNullOrEmpty(comicTitle))
                     {
+                        // 切換到首頁分頁
                         tabUserMain.SelectedTab = tabPageHome;
-                        await RefreshUserComicsGrid(comicTitle, "書名");
+
+                        // 獲取首頁的搜尋控制項
+                        var homeTabPage = tabUserMain.TabPages["tabPageHome"];
+                        var txtSearch = homeTabPage.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<TextBox>().FirstOrDefault(c => c.Name == "txtSearch");
+                        var cmbSearchType = homeTabPage.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<ComboBox>().FirstOrDefault(c => c.Name == "cmbSearchType");
+
+                        if (txtSearch != null && cmbSearchType != null)
+                        {
+                            // 設定搜尋條件
+                            txtSearch.Text = comicTitle;
+                            cmbSearchType.SelectedItem = "書名";
+
+                            // 執行搜尋
+                            await RefreshUserComicsGrid(comicTitle, "書名");
+                        }
                     }
                 }
                 // 其他按鈕（借書、預約）的邏輯暫不在此處理，留待後續步驟
