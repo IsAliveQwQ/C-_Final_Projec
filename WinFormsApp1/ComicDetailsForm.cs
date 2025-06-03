@@ -17,7 +17,7 @@ namespace WinFormsApp1
         private Label lblOfferDate;
         private Label lblPages;
         private Label lblSummaryTitle;
-        private Label lblSummaryContent;
+        private TextBox txtSummaryContent;
         private PictureBox pbComicImage;
 
         private string imageUrl;
@@ -27,9 +27,9 @@ namespace WinFormsApp1
             InitializeComponent();
             this.Text = "漫畫詳細資訊";
             this.StartPosition = FormStartPosition.CenterParent;
-            this.ClientSize = new Size(550, 725);
-            this.MinimumSize = new Size(550, 725);
-            this.MaximumSize = new Size(550, 725);
+            this.ClientSize = new Size(700, 725);
+            this.MinimumSize = new Size(700, 725);
+            this.MaximumSize = new Size(700, 725);
 
             this.imageUrl = comic.ImageUrl;
 
@@ -85,24 +85,29 @@ namespace WinFormsApp1
                 Font = new Font("Microsoft JhengHei UI", 14F, FontStyle.Bold),
                 Text = "內容簡介"
             };
-            lblSummaryContent = new Label
+            txtSummaryContent = new TextBox
             {
-                AutoSize = true,
                 Location = new Point(20, summaryTop + 36),
-                MaximumSize = new Size(this.ClientSize.Width - 40, 0),
+                Size = new Size(this.ClientSize.Width - 40, this.ClientSize.Height - (summaryTop + 36) - 20),
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical,
                 Font = new Font("Microsoft JhengHei UI", 11F),
-                TextAlign = ContentAlignment.TopLeft
+                WordWrap = true,
+                BorderStyle = BorderStyle.FixedSingle
             };
             this.Controls.Add(lblSummaryTitle);
-            this.Controls.Add(lblSummaryContent);
-            lblSummaryContent.Text = string.IsNullOrWhiteSpace(comic.BookSummary) ? "(無摘要)" : comic.BookSummary;
+            this.Controls.Add(txtSummaryContent);
+            txtSummaryContent.Text = string.IsNullOrWhiteSpace(comic.BookSummary) ? "(無摘要)" : comic.BookSummary;
+            txtSummaryContent.SelectionStart = 0;
+            txtSummaryContent.SelectionLength = 0;
 
             this.Load += ComicDetailsForm_Load;
             this.Shown += (s, e) =>
             {
                 this.Height = 725;
-                this.MinimumSize = new Size(550, 725);
-                this.MaximumSize = new Size(550, 725);
+                this.MinimumSize = new Size(700, 725);
+                this.MaximumSize = new Size(700, 725);
             };
         }
 
