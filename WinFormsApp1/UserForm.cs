@@ -143,8 +143,8 @@ namespace WinFormsApp1
                 new object[] { true });
 
             // 設定 DataGridView 基本樣式
-            dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F);
-            dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 20F, System.Drawing.FontStyle.Bold);
+            dgvComics.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
+            dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
             dgvComics.RowTemplate.Height = 48;
             dgvComics.RowHeadersWidth = 60;
             dgvComics.EnableHeadersVisualStyles = false;
@@ -209,6 +209,16 @@ namespace WinFormsApp1
 
             // 只在建構子初始化分頁與首頁 UI
             InitializeUserTabs();
+
+            // 強制標題列高度在資料綁定後仍為24
+            dgvComics.DataBindingComplete += dgvComics_DataBindingComplete;
+        }
+
+        // 新增：強制標題列高度在資料綁定後仍為24
+        private void dgvComics_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            dgvComics.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgvComics.ColumnHeadersHeight = 24;
         }
 
         // 新增建構子以兼容舊程式碼 (雖然登入流程已修改，但保留以防萬一)
@@ -1212,8 +1222,9 @@ namespace WinFormsApp1
         // 設定漫畫主表欄位標題、寬度、順序
         private void SetComicsGridColumnSettings()
         {
-            dgvComics.ColumnHeadersHeight = 72;
-            dgvComics.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
+            dgvComics.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgvComics.ColumnHeadersHeight = 24;
+            dgvComics.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
             if (dgvComics.Columns.Contains("comic_id")) { var col = dgvComics.Columns["comic_id"]; col.HeaderText = "書號"; col.Width = 80; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
             if (dgvComics.Columns.Contains("isbn")) { var col = dgvComics.Columns["isbn"]; col.HeaderText = "ISBN"; col.Width = 120; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; }
             if (dgvComics.Columns.Contains("title")) { var col = dgvComics.Columns["title"]; col.HeaderText = "書名"; col.Width = 440; col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; }
@@ -3123,7 +3134,7 @@ LEFT JOIN (
             dgv.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
             dgv.RowTemplate.Height = 36;
             dgv.RowHeadersWidth = 60;
-            dgv.ColumnHeadersHeight = 48;
+            dgv.ColumnHeadersHeight = 24;
             dgv.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
             dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgv.EnableHeadersVisualStyles = false;
