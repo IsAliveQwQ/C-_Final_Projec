@@ -550,12 +550,14 @@ namespace WinFormsApp1
         {
             if (e.RowIndex < 0) return;
             var colName = dgvUser.Columns[e.ColumnIndex].Name;
+            var userId = dgvUser.Rows[e.RowIndex].Cells["用戶ID"].Value.ToString();
             var username = dgvUser.Rows[e.RowIndex].Cells["用戶名"].Value.ToString();
             if (colName == "查看借閱紀錄")
             {
                 dgvBorrow.DataSource = null; // 先清空，避免閃現舊資料
                 tabAdmin.SelectedTab = tabBorrow;
                 txtBorrowKeyword.Text = username;
+                cmbBorrowSearchType.SelectedItem = "用戶";
                 btnBorrowSearch.PerformClick();
             }
             else if (colName == "查看預約紀錄")
@@ -563,6 +565,7 @@ namespace WinFormsApp1
                 dgvReserve.DataSource = null; // 先清空，避免閃現舊資料
                 tabAdmin.SelectedTab = tabReserve;
                 txtReserveKeyword.Text = username;
+                cmbReserveSearchType.SelectedItem = "用戶";
                 btnReserveSearch.PerformClick();
             }
         }
@@ -727,8 +730,16 @@ namespace WinFormsApp1
                         "ISBN" => "c.isbn",
                         _ => "u.username"
                     };
-                    sql += $" AND {field} LIKE @keyword";
-                    paramList.Add(new MySqlParameter("@keyword", "%" + currentBorrowSearchKeyword + "%"));
+                    if (currentBorrowSearchType == "用戶")
+                    {
+                        sql += $" AND {field} = @keyword";
+                        paramList.Add(new MySqlParameter("@keyword", currentBorrowSearchKeyword));
+                    }
+                    else
+                    {
+                        sql += $" AND {field} LIKE @keyword";
+                        paramList.Add(new MySqlParameter("@keyword", "%" + currentBorrowSearchKeyword + "%"));
+                    }
                 }
 
                 // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE
@@ -809,8 +820,16 @@ namespace WinFormsApp1
                         "ISBN" => "c.isbn",
                         _ => "u.username"
                     };
-                    sql += $" AND {field} LIKE @keyword";
-                    paramList.Add(new MySqlParameter("@keyword", "%" + currentReserveSearchKeyword + "%"));
+                    if (currentReserveSearchType == "用戶")
+                    {
+                        sql += $" AND {field} = @keyword";
+                        paramList.Add(new MySqlParameter("@keyword", currentReserveSearchKeyword));
+                    }
+                    else
+                    {
+                        sql += $" AND {field} LIKE @keyword";
+                        paramList.Add(new MySqlParameter("@keyword", "%" + currentReserveSearchKeyword + "%"));
+                    }
                 }
 
                 // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE

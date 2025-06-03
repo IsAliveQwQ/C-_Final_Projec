@@ -154,19 +154,64 @@ namespace WinFormsApp1
         private async void btnSave_Click(object sender, EventArgs e)
         {
             // 獲取用戶輸入
-            ComicTitle = txtTitle.Text;
-            ComicISBN = txtISBN.Text;
-            ComicAuthor = txtAuthor.Text;
-            ComicPublisher = txtPublisher.Text;
-            ComicCategory = txtCategory.Text;
-            OfferDate = txtOfferDate.Text; // 獲取發售日
-            Pages = txtPages.Text; // 獲取頁數
-            BookSummary = txtBookSummary.Text; // 獲取摘要
+            ComicTitle = txtTitle.Text.Trim();
+            ComicISBN = txtISBN.Text.Trim();
+            ComicAuthor = txtAuthor.Text.Trim();
+            ComicPublisher = txtPublisher.Text.Trim();
+            ComicCategory = txtCategory.Text.Trim();
+            OfferDate = txtOfferDate.Text.Trim();
+            Pages = txtPages.Text.Trim();
+            BookSummary = txtBookSummary.Text.Trim();
 
-            // Validate ISBN is numeric
-            if (!long.TryParse(ComicISBN, out _))
+            // 必填欄位檢查
+            if (string.IsNullOrWhiteSpace(ComicTitle) || string.IsNullOrWhiteSpace(ComicISBN) ||
+                string.IsNullOrWhiteSpace(ComicAuthor) || string.IsNullOrWhiteSpace(ComicPublisher) ||
+                string.IsNullOrWhiteSpace(ComicCategory) || string.IsNullOrWhiteSpace(OfferDate) ||
+                string.IsNullOrWhiteSpace(Pages) || string.IsNullOrWhiteSpace(BookSummary))
             {
-                MessageBox.Show("ISBN 必須是數字！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("所有欄位皆為必填，請完整填寫！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.DialogResult = DialogResult.None;
+                return;
+            }
+
+            // ISBN 格式檢查
+            if (!long.TryParse(ComicISBN, out _) || ComicISBN.Length < 6)
+            {
+                MessageBox.Show("ISBN 必須為至少6位數字！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.DialogResult = DialogResult.None;
+                return;
+            }
+
+            // 發售日格式檢查 yyyy/mm/dd
+            if (!System.Text.RegularExpressions.Regex.IsMatch(OfferDate, @"^\d{4}/\d{2}/\d{2}$"))
+            {
+                MessageBox.Show("發售日格式必須為 yyyy/mm/dd！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.DialogResult = DialogResult.None;
+                return;
+            }
+            else
+            {
+                // 進一步檢查日期是否合法
+                if (!DateTime.TryParseExact(OfferDate, "yyyy/MM/dd", null, System.Globalization.DateTimeStyles.None, out _))
+                {
+                    MessageBox.Show("發售日不是有效日期！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    this.DialogResult = DialogResult.None;
+                    return;
+                }
+            }
+
+            // 頁數必須為正整數
+            if (!int.TryParse(Pages, out int pagesInt) || pagesInt <= 0)
+            {
+                MessageBox.Show("頁數必須為正整數！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.DialogResult = DialogResult.None;
+                return;
+            }
+
+            // 必須有圖片（新選擇或原有）
+            if (string.IsNullOrEmpty(ImagePath) && string.IsNullOrEmpty(currentImageUrl))
+            {
+                MessageBox.Show("請選擇漫畫圖片！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 this.DialogResult = DialogResult.None;
                 return;
             }
