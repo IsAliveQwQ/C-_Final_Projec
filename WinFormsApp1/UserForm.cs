@@ -999,7 +999,7 @@ namespace WinFormsApp1
             {
                 // 在後台執行數據查詢
                 var dt = await Task.Run(() => {
-                    string sql = @"SELECT br.borrow_id, c.title, c.isbn, br.borrow_date, br.return_date, 
+                    string sql = @"SELECT br.borrow_id, c.title, c.isbn, br.borrow_date, br.expected_return_date, br.return_date, 
                                  CASE WHEN br.return_date IS NULL THEN '未還' ELSE '已還' END as status
                                  FROM borrow_record br
                                  JOIN comic c ON br.comic_id = c.comic_id
@@ -1235,13 +1235,14 @@ namespace WinFormsApp1
             dgvBorrowRecord.EnableHeadersVisualStyles = false;
             dgvBorrowRecord.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
 
-            var columnSettings = new Dictionary<string, (string Header, int? Width, DataGridViewAutoSizeColumnMode Mode)>
+            var columnSettings = new Dictionary<string, (string Header, int? Width, DataGridViewAutoSizeColumnMode Mode)>()
             {
                 { "borrow_id", ("編號", 60, DataGridViewAutoSizeColumnMode.None) }, // 修改：固定寬度 60
                 { "title", ("書名", 200, DataGridViewAutoSizeColumnMode.None) }, // 修改：固定寬度 200
                 { "isbn", ("ISBN", 100, DataGridViewAutoSizeColumnMode.None) }, // 修改：固定寬度 100
                 { "borrow_date", ("借閱日期", null, DataGridViewAutoSizeColumnMode.Fill) }, // 保持 Fill
-                { "return_date", ("歸還日期", null, DataGridViewAutoSizeColumnMode.Fill) }, // 保持 Fill
+                { "expected_return_date", ("預期歸還日", null, DataGridViewAutoSizeColumnMode.Fill) }, // 新增
+                { "return_date", ("實際歸還日", null, DataGridViewAutoSizeColumnMode.Fill) },
                 { "status", ("狀態", 80, DataGridViewAutoSizeColumnMode.None) } // 修改：固定寬度 80
             };
 
@@ -1256,88 +1257,17 @@ namespace WinFormsApp1
                     {
                         col.Width = setting.Value.Width.Value; // 應用設定的固定寬度
                     }
+
+                    // 設定日期時間格式
+                    if (setting.Key == "borrow_date" || setting.Key == "expected_return_date" || setting.Key == "return_date")
+                    {
+                        col.DefaultCellStyle.Format = "yyyy/MM/dd HH:mm:ss";
+                    }
                 }
             }
 
             // 添加或獲取 "操作" 按鈕列
             var operationCol = dgvBorrowRecord.Columns.OfType<DataGridViewButtonColumn>().FirstOrDefault(c => c.Name == "操作");
-            if (operationCol == null)
-            {
-                operationCol = new DataGridViewButtonColumn
-                {
-                    Name = "操作",
-                    HeaderText = "操作",
-                    UseColumnTextForButtonValue = false,
-                    Width = 80 // 操作按鈕固定寬度
-                };
-                dgvBorrowRecord.Columns.Add(operationCol);
-            }
-            else
-            {
-                operationCol.UseColumnTextForButtonValue = false;
-                operationCol.Width = 80; // 確保操作按鈕固定寬度
-            }
-
-            // 根據狀態設定按鈕文字和啟用狀態
-            foreach (DataGridViewRow row in dgvBorrowRecord.Rows)
-            {
-                if (row.IsNewRow) continue;
-                var statusCell = row.Cells["status"];
-                var operationCell = row.Cells["操作"] as DataGridViewButtonCell;
-                if (statusCell != null && operationCell != null)
-                {
-                    string status = statusCell.Value?.ToString() ?? "";
-                    if (status == "未還")
-                    {
-                        operationCell.Value = "還書";
-                        operationCell.ReadOnly = false;
-                    }
-                    else
-                    {
-                        operationCell.Value = "已還";
-                        operationCell.ReadOnly = true;
-                    }
-                }
-            }
-        }
-
-        private void SetReserveGridSettingsAndButtonStatus()
-        {
-            if (dgvReserveRecord == null || dgvReserveRecord.Columns.Count == 0) return;
-
-            dgvReserveRecord.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
-            dgvReserveRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
-            dgvReserveRecord.RowTemplate.Height = 36;
-            dgvReserveRecord.RowHeadersWidth = 60;
-            dgvReserveRecord.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
-            dgvReserveRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill; // 保持整體 AutoSizeColumnsMode 為 Fill
-            dgvReserveRecord.EnableHeadersVisualStyles = false;
-            dgvReserveRecord.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
-
-            var columnSettings = new List<(string Name, string Header, int? Width, DataGridViewAutoSizeColumnMode Mode)>()
-            {
-                ("reservation_id", "編號", 60, DataGridViewAutoSizeColumnMode.None), // 修改：固定寬度 60
-                ("title", "書名", 200, DataGridViewAutoSizeColumnMode.None), // 修改：固定寬度 200
-                ("isbn", "ISBN", 100, DataGridViewAutoSizeColumnMode.None), // 修改：固定寬度 100
-                ("reservation_date", "預約日期", null, DataGridViewAutoSizeColumnMode.Fill), // 保持 Fill
-                ("expiry_date", "到期日期", null, DataGridViewAutoSizeColumnMode.Fill), // 保持 Fill
-                ("status", "狀態", 80, DataGridViewAutoSizeColumnMode.None) // 修改：固定寬度 80
-            };
-
-            foreach (var setting in columnSettings)
-            {
-                var col = dgvReserveRecord.Columns.OfType<DataGridViewColumn>().FirstOrDefault(c => c.Name == setting.Name);
-                if (col == null) continue;
-                col.HeaderText = setting.Header;
-                col.AutoSizeMode = setting.Mode; // 應用設定的 AutoSizeMode
-                if (setting.Mode == DataGridViewAutoSizeColumnMode.None && setting.Width.HasValue)
-                {
-                    col.Width = setting.Width.Value; // 應用設定的固定寬度
-                }
-            }
-
-            // 添加或獲取 "操作" 按鈕列
-            var operationCol = dgvReserveRecord.Columns.OfType<DataGridViewButtonColumn>().FirstOrDefault(c => c.Name == "操作");
             if (operationCol == null)
             {
                 operationCol = new DataGridViewButtonColumn
@@ -1462,19 +1392,24 @@ LEFT JOIN (
         // 優化借閱紀錄查詢
         private async Task<DataTable> QueryBorrowRecordsAsync()
         {
-            string sql = @"SELECT br.borrow_id, c.title, c.isbn, br.borrow_date, br.return_date, 
-                             CASE WHEN br.return_date IS NULL THEN '未還' ELSE '已還' END as status
-                             FROM borrow_record br
-                             JOIN comic c ON br.comic_id = c.comic_id
-                             WHERE br.user_id = @userId
-                             ORDER BY br.borrow_date DESC
-                             LIMIT @offset, @pageSize";
-            MySqlParameter[] parameters = {
-                new MySqlParameter("@userId", loggedInUserId),
-                new MySqlParameter("@offset", (currentBorrowPage - 1) * PageSize),
-                new MySqlParameter("@pageSize", PageSize)
-            };
-            return await Task.Run(() => DBHelper.ExecuteQuery(sql, parameters));
+            string sql = @"
+                SELECT br.borrow_id, br.comic_id, c.title as comic_title, br.borrow_date, br.return_date,
+                       CASE 
+                           WHEN br.return_date IS NULL AND NOW() > br.return_date THEN '逾期'
+                           WHEN br.return_date IS NULL THEN '借閱中'
+                           ELSE '已歸還'
+                       END as status
+                FROM borrow_record br
+                JOIN comic c ON br.comic_id = c.comic_id
+                WHERE br.user_id = @uid
+                ORDER BY br.borrow_date DESC
+                LIMIT @offset, @pageSize";
+
+            return await Task.Run(() => DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
+                new MySql.Data.MySqlClient.MySqlParameter("@offset", (currentBorrowPage - 1) * PageSize),
+                new MySql.Data.MySqlClient.MySqlParameter("@pageSize", PageSize)
+            }));
         }
         // 優化預約紀錄查詢
         private async Task<DataTable> QueryReserveRecordsAsync()
@@ -2499,57 +2434,85 @@ LEFT JOIN (
                 ));
                 bool isBorrowed = dtBorrow.Rows.Count > 0;
                 int borrowedUserId = isBorrowed ? Convert.ToInt32(dtBorrow.Rows[0]["user_id"]) : -1;
+
+                // 獲取當前點擊行的數據以便後續刷新UI
+                // ... existing code ...
                 if (isBorrowed && borrowedUserId == loggedInUserId)
                 {
-                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(
-                        "UPDATE borrow_record SET return_date = NOW() WHERE comic_id = @cid AND user_id = @uid AND return_date IS NULL",
-                        new MySql.Data.MySqlClient.MySqlParameter[] {
-                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
-                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
-                        }
-                    ));
+                    // 還書
+                    string sqlReturn = "UPDATE borrow_record SET return_date = NOW() WHERE comic_id = @cid AND user_id = @uid AND return_date IS NULL";
+                    int rowsAffected = DBHelper.ExecuteNonQuery(sqlReturn, new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
+                        new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+                    });
                     if (rowsAffected > 0)
                     {
                         MessageBox.Show("還書成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        await RefreshAllSectionsAsync();
                     }
                 }
-                else if (!isBorrowed)
+                else if (!isBorrowed) // 如果書籍未被借出，執行借書流程
                 {
-                    var dtReserve = await Task.Run(() => DBHelper.ExecuteQuery(
-                        "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-                        new MySql.Data.MySqlClient.MySqlParameter[] {
-                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                        }
-                    ));
+                    // 檢查預約
+                    string sqlReserve = "SELECT user_id FROM reservation WHERE comic_id = @cid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+                    var dtReserve = DBHelper.ExecuteQuery(sqlReserve, new MySql.Data.MySqlClient.MySqlParameter[] {
+                        new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
+                    });
                     int reservedUserId = dtReserve.Rows.Count > 0 ? Convert.ToInt32(dtReserve.Rows[0]["user_id"]) : -1;
                     if (dtReserve.Rows.Count > 0 && reservedUserId != loggedInUserId)
                     {
                         MessageBox.Show("此書已被預約，只有預約者才能借閱。", "借閱失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        await RefreshAllSectionsAsync();
                         return;
                     }
                     if (IsUserInCoolingPeriod(loggedInUserId, comicId))
                     {
                         MessageBox.Show("您仍在冷卻期內，無法借閱此書。", "借閱失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        await RefreshAllSectionsAsync();
                         return;
                     }
-                    int rowsAffected = await Task.Run(() => DBHelper.ExecuteNonQuery(
-                        "INSERT INTO borrow_record (user_id, comic_id, borrow_date) VALUES (@uid, @cid, NOW())",
-                        new MySql.Data.MySqlClient.MySqlParameter[] {
-                            new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
-                            new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId)
-                        }
-                    ));
-                    if (rowsAffected > 0)
+
+                    // 顯示選擇歸還日期的表單
+                    using (var selectDateForm = new SelectReturnDateForm(DateTime.Now))
                     {
-                        await Task.Run(() => DBHelper.ExecuteNonQuery(
-                            "UPDATE reservation SET status = 'canceled' WHERE comic_id = @cid AND user_id = @uid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-                            new MySql.Data.MySqlClient.MySqlParameter[] {
+                        if (selectDateForm.ShowDialog() == DialogResult.OK)
+                        {
+                            DateTime selectedReturnDate = selectDateForm.SelectedDate;
+                            
+                            // 借書
+                            string sqlBorrowInsert = "INSERT INTO borrow_record (user_id, comic_id, borrow_date, expected_return_date) VALUES (@uid, @cid, NOW(), @returnDate)";
+                            int rowsAffected = DBHelper.ExecuteNonQuery(sqlBorrowInsert, new MySql.Data.MySqlClient.MySqlParameter[] {
+                                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId),
                                 new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
-                                new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+                                new MySql.Data.MySqlClient.MySqlParameter("@returnDate", selectedReturnDate)
+                            });
+
+                            if (rowsAffected > 0)
+                            {
+                                // 自動取消自己預約（只取消24小時內的預約）
+                                string sqlCancelReserve = "UPDATE reservation SET status = 'canceled' WHERE comic_id = @cid AND user_id = @uid AND status = 'active' AND reservation_date > DATE_SUB(NOW(), INTERVAL 24 HOUR)";
+                                await Task.Run(() => DBHelper.ExecuteNonQuery(sqlCancelReserve, new MySql.Data.MySqlClient.MySqlParameter[] {
+                                    new MySql.Data.MySqlClient.MySqlParameter("@cid", comicId),
+                                    new MySql.Data.MySqlClient.MySqlParameter("@uid", loggedInUserId)
+                                }));
+                                MessageBox.Show("借書成功！請在 " + selectedReturnDate.ToString("yyyy/MM/dd HH:mm:ss") + " 前歸還。", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                
+                                // 刷新所有相關列表，包括主表狀態
+                                await RefreshUserComicsGrid("", "全部"); // 刷新主表
+                                await RefreshAllSectionsAsync(); // 刷新所有相關列表
                             }
-                        ));
-                        MessageBox.Show("借書成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            else
+                            {
+                                MessageBox.Show("借書失敗！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        else
+                        {
+                            // 使用者取消選擇日期，不執行借書操作
+                            MessageBox.Show("已取消借書操作。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
                     }
+
                 }
                 else
                 {
@@ -3281,6 +3244,112 @@ LEFT JOIN (
             catch (Exception ex)
             {
                 MessageBox.Show("操作失敗：" + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // 設定預約紀錄欄位屬性和按鈕狀態
+        private void SetReserveGridSettingsAndButtonStatus()
+        {
+            if (dgvReserveRecord == null || dgvReserveRecord.Columns.Count == 0) return;
+
+            dgvReserveRecord.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F);
+            dgvReserveRecord.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10F, System.Drawing.FontStyle.Bold);
+            dgvReserveRecord.RowTemplate.Height = 36;
+            dgvReserveRecord.RowHeadersWidth = 60;
+            dgvReserveRecord.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
+            dgvReserveRecord.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill; // 保持整體 AutoSizeColumnsMode 為 Fill
+            dgvReserveRecord.EnableHeadersVisualStyles = false;
+            dgvReserveRecord.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.WhiteSmoke;
+
+            var columnSettings = new Dictionary<string, (string Header, int? Width, DataGridViewAutoSizeColumnMode Mode)>()
+            {
+                { "reservation_id", ("編號", 60, DataGridViewAutoSizeColumnMode.None) }, // 修改：固定寬度 60
+                { "title", ("書名", 200, DataGridViewAutoSizeColumnMode.None) }, // 修改：固定寬度 200
+                { "isbn", ("ISBN", 100, DataGridViewAutoSizeColumnMode.None) }, // 修改：固定寬度 100
+                { "reservation_date", ("預約日期", null, DataGridViewAutoSizeColumnMode.Fill) }, // 保持 Fill
+                { "expiry_date", ("到期日期", null, DataGridViewAutoSizeColumnMode.Fill) }, // 保持 Fill
+                { "status", ("狀態", 80, DataGridViewAutoSizeColumnMode.None) } // 修改：固定寬度 80
+            };
+
+            foreach (var setting in columnSettings)
+            {
+                if (dgvReserveRecord.Columns.Contains(setting.Key))
+                {
+                    var col = dgvReserveRecord.Columns[setting.Key];
+                    col.HeaderText = setting.Value.Header;
+                    col.AutoSizeMode = setting.Value.Mode; // 應用設定的 AutoSizeMode
+                    if (setting.Value.Mode == DataGridViewAutoSizeColumnMode.None && setting.Value.Width.HasValue)
+                    {
+                        col.Width = setting.Value.Width.Value; // 應用設定的固定寬度
+                    }
+
+                    // 設定日期時間格式
+                    if (setting.Key == "reservation_date" || setting.Key == "expiry_date")
+                    {
+                        col.DefaultCellStyle.Format = "yyyy/MM/dd HH:mm:ss";
+                    }
+                }
+            }
+
+            // 添加或獲取 "操作" 按鈕列
+            var operationCol = dgvReserveRecord.Columns.OfType<DataGridViewButtonColumn>().FirstOrDefault(c => c.Name == "操作");
+            if (operationCol == null)
+            {
+                operationCol = new DataGridViewButtonColumn
+                {
+                    Name = "操作",
+                    HeaderText = "操作",
+                    UseColumnTextForButtonValue = false,
+                    Width = 80, // 操作按鈕固定寬度
+                };
+                dgvReserveRecord.Columns.Add(operationCol);
+            }
+            else
+            {
+                operationCol.UseColumnTextForButtonValue = false;
+                operationCol.Width = 80; // 確保操作按鈕固定寬度
+            }
+
+            // 根據狀態設定按鈕文字和啟用狀態
+            foreach (DataGridViewRow row in dgvReserveRecord.Rows)
+            {
+                if (row.IsNewRow) continue;
+                var statusCell = row.Cells["status"];
+                var operationCell = row.Cells["操作"] as DataGridViewButtonCell;
+                if (statusCell != null && operationCell != null)
+                {
+                    string status = statusCell.Value?.ToString() ?? "";
+                    if (status == "預約中")
+                    {
+                        // 檢查是否是自己的預約 (避免非預約者看到取消按鈕)
+                        int reservationId = 0;
+                        if (dgvReserveRecord.Columns.Contains("reservation_id") && row.Cells["reservation_id"] != null && row.Cells["reservation_id"].Value != null) {
+                            int.TryParse(row.Cells["reservation_id"].Value.ToString(), out reservationId);
+                        }
+                        string sql = "SELECT user_id FROM reservation WHERE reservation_id = @rid";
+                        var dt = DBHelper.ExecuteQuery(sql, new MySql.Data.MySqlClient.MySqlParameter[] {
+                            new MySql.Data.MySqlClient.MySqlParameter("@rid", reservationId)
+                        });
+                        int reservedUserId = dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["user_id"]) : -1;
+                        if (reservedUserId == loggedInUserId)
+                        {
+                            operationCell.Value = "取消預約";
+                            operationCell.ReadOnly = false;
+                            if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.DarkBlue;
+                        } else
+                        {
+                            operationCell.Value = status;
+                            operationCell.ReadOnly = true;
+                            if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.Gray;
+                        }
+                    }
+                    else
+                    {
+                        operationCell.Value = status == "" ? "操作" : status;
+                        operationCell.ReadOnly = true;
+                        if (operationCell.Style != null) operationCell.Style.ForeColor = System.Drawing.Color.Gray;
+                    }
+                }
             }
         }
     }

@@ -88,7 +88,7 @@ namespace WinFormsApp1
                     // 檢查用戶狀態
                     if (userStatus == "frozen")
                     {
-                        MessageBox.Show("您的帳號因有逾期未歸還書籍而被凍結，無法登入，請聯絡管理員解凍。", "帳號凍結", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("您的帳號已被凍結，請聯繫管理員。", "帳號凍結", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         this.DialogResult = DialogResult.None; // 保持對話框開啟
                         // Reset logged-in user info as login failed
                         loggedInUserId = 0;
