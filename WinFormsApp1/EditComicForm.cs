@@ -38,22 +38,19 @@ namespace WinFormsApp1
             };
 
             this.btnSelectImage.Click += BtnSelectImage_Click;
-            // 為 txtOfferDate 添加 Enter 和 MouseClick 事件處理程式
             this.txtOfferDate.Enter += TxtOfferDate_Enter;
             this.txtOfferDate.MouseClick += TxtOfferDate_MouseClick;
 
-            // 載入現有資料到控制項
             txtISBN.Text = isbn;
             txtTitle.Text = title;
             txtAuthor.Text = author;
             txtPublisher.Text = publisher;
             txtCategory.Text = category;
-            txtOfferDate.Text = offerDate; // 載入發售日
-            txtPages.Text = pages; // 載入頁數
-            txtBookSummary.Text = bookSummary; // 載入摘要
+            txtOfferDate.Text = offerDate; 
+            txtPages.Text = pages; 
+            txtBookSummary.Text = bookSummary; 
 
-            // 如果有現有圖片，顯示它
-            // 圖片載入邏輯將移至 LoadComicImageAsync 方法
+          
         }
 
         private void InitializeMinioClient()
@@ -67,53 +64,46 @@ namespace WinFormsApp1
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"初始化 MinIO 客戶端時發生錯誤: {ex.Message}", "MinIO 錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"初始化 MinIO 時發生錯誤: {ex.Message}", "MinIO 錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 minioClient = null;
             }
         }
 
-        // 處理圖片載入的非同步方法
+        
         private async Task LoadComicImageAsync()
         {
             if (!string.IsNullOrEmpty(currentImageUrl))
             {
-                // 檢查並修正 URL，確保有協定
+                
                 string imageUrlToLoad = currentImageUrl;
                 if (!imageUrlToLoad.StartsWith("http://") && !imageUrlToLoad.StartsWith("https://"))
                 {
                     imageUrlToLoad = "https://" + imageUrlToLoad;
-                    System.Diagnostics.Debug.WriteLine($"LoadComicImageAsync: 修正後的圖片 URL: {imageUrlToLoad}");
+                    System.Diagnostics.Debug.WriteLine($": {imageUrlToLoad}");
                 }
 
-                System.Diagnostics.Debug.WriteLine($"LoadComicImageAsync: 嘗試從 URL 載入圖片: {imageUrlToLoad}");
+                System.Diagnostics.Debug.WriteLine($": {imageUrlToLoad}");
                 try
                 {
                     using (var httpClient = new System.Net.Http.HttpClient())
                     {
-                        System.Diagnostics.Debug.WriteLine("LoadComicImageAsync: 開始下載圖片流...");
-                        // 確保使用修正後的 imageUrlToLoad 進行下載
+                        System.Diagnostics.Debug.WriteLine("");
                         using (var stream = await httpClient.GetStreamAsync(imageUrlToLoad))
                         {
-                            System.Diagnostics.Debug.WriteLine("LoadComicImageAsync: 圖片流下載完成，複製到 MemoryStream...");
+                            System.Diagnostics.Debug.WriteLine("");
                             using (var memoryStream = new MemoryStream())
                             {
                                 await stream.CopyToAsync(memoryStream);
-                                memoryStream.Position = 0; // 重設流的位置到開頭
-                                System.Diagnostics.Debug.WriteLine($"LoadComicImageAsync: 圖片流複製完成，MemoryStream 大小: {memoryStream.Length}");
+                                memoryStream.Position = 0; 
 
-                                // 將圖片載入到 PictureBox (需要在 UI 線程上更新)
                                 this.Invoke((MethodInvoker)delegate
                                 {
                                     try
                                     {
-                                        System.Diagnostics.Debug.WriteLine("LoadComicImageAsync: 在 UI 線程上嘗試從 MemoryStream 建立 Image 物件...");
                                         pbComicImage.Image = System.Drawing.Image.FromStream(memoryStream);
-                                        System.Diagnostics.Debug.WriteLine("LoadComicImageAsync: Image 物件建立成功，更新 PictureBox。");
                                     }
                                     catch (Exception uiEx)
                                     {
-                                        System.Diagnostics.Debug.WriteLine($"LoadComicImageAsync: 在 UI 線程上從 MemoryStream 建立 Image 物件時發生錯誤: {uiEx.Message}");
-                                        // 可以在 UI 線程上清空 PictureBox 或顯示預設圖片
                                         pbComicImage.Image = null;
                                     }
                                 });
@@ -123,22 +113,14 @@ namespace WinFormsApp1
                 }
                 catch (Exception ex)
                 {
-                    // 如果無法載入圖片，顯示錯誤或忽略
-                    System.Diagnostics.Debug.WriteLine($"LoadComicImageAsync: 下載或處理圖片時發生錯誤: {ex.Message}\n{ex.StackTrace}");
-                    // 可以在 UI 線程上清空 PictureBox 或顯示預設圖片
                      this.Invoke((MethodInvoker)delegate
                     {
                          pbComicImage.Image = null;
                     });
                 }
             }
-            else
-            {
-                 System.Diagnostics.Debug.WriteLine("LoadComicImageAsync: currentImageUrl 為空，跳過圖片載入。");
-            }
+           
         }
-
-        // 屬性用於獲取修改後的漫畫資訊
         public string ComicTitle { get; private set; }
         public string ComicISBN { get; private set; }
         public string ComicAuthor { get; private set; }
@@ -147,13 +129,12 @@ namespace WinFormsApp1
         public string ImagePath { get; private set; }
         public string ImageUrl { get; private set; }
         public int ComicId => comicId;
-        public string OfferDate { get; private set; } // 新增 OfferDate 屬性
-        public string Pages { get; private set; } // 新增 Pages 屬性
-        public string BookSummary { get; private set; } // 新增 BookSummary 屬性
+        public string OfferDate { get; private set; } 
+        public string Pages { get; private set; } 
+        public string BookSummary { get; private set; } 
 
         private async void btnSave_Click(object sender, EventArgs e)
         {
-            // 獲取用戶輸入
             ComicTitle = txtTitle.Text.Trim();
             ComicISBN = txtISBN.Text.Trim();
             ComicAuthor = txtAuthor.Text.Trim();
@@ -163,7 +144,6 @@ namespace WinFormsApp1
             Pages = txtPages.Text.Trim();
             BookSummary = txtBookSummary.Text.Trim();
 
-            // 必填欄位檢查
             if (string.IsNullOrWhiteSpace(ComicTitle) || string.IsNullOrWhiteSpace(ComicISBN) ||
                 string.IsNullOrWhiteSpace(ComicAuthor) || string.IsNullOrWhiteSpace(ComicPublisher) ||
                 string.IsNullOrWhiteSpace(ComicCategory) || string.IsNullOrWhiteSpace(OfferDate) ||
@@ -174,7 +154,6 @@ namespace WinFormsApp1
                 return;
             }
 
-            // ISBN 格式檢查
             if (!long.TryParse(ComicISBN, out _) || ComicISBN.Length < 6)
             {
                 MessageBox.Show("ISBN 必須為至少6位數字！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -182,7 +161,6 @@ namespace WinFormsApp1
                 return;
             }
 
-            // 發售日格式檢查 yyyy/mm/dd
             if (!System.Text.RegularExpressions.Regex.IsMatch(OfferDate, @"^\d{4}/\d{2}/\d{2}$"))
             {
                 MessageBox.Show("發售日格式必須為 yyyy/mm/dd！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -191,7 +169,7 @@ namespace WinFormsApp1
             }
             else
             {
-                // 進一步檢查日期是否合法
+                
                 if (!DateTime.TryParseExact(OfferDate, "yyyy/MM/dd", null, System.Globalization.DateTimeStyles.None, out _))
                 {
                     MessageBox.Show("發售日不是有效日期！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -200,7 +178,7 @@ namespace WinFormsApp1
                 }
             }
 
-            // 頁數必須為正整數
+            
             if (!int.TryParse(Pages, out int pagesInt) || pagesInt <= 0)
             {
                 MessageBox.Show("頁數必須為正整數！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -208,7 +186,6 @@ namespace WinFormsApp1
                 return;
             }
 
-            // 必須有圖片（新選擇或原有）
             if (string.IsNullOrEmpty(ImagePath) && string.IsNullOrEmpty(currentImageUrl))
             {
                 MessageBox.Show("請選擇漫畫圖片！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -264,19 +241,17 @@ namespace WinFormsApp1
             }
         }
 
-        // 新增表單載入事件處理程式
+        
         private async void EditComicForm_Load(object sender, EventArgs e)
         {
             await LoadComicImageAsync();
         }
 
-        // txtOfferDate 的 Enter 事件處理程式
         private void TxtOfferDate_Enter(object sender, EventArgs e)
         {
             ((MaskedTextBox)sender).SelectionStart = 0;
         }
 
-        // txtOfferDate 的 MouseClick 事件處理程式
         private void TxtOfferDate_MouseClick(object sender, MouseEventArgs e)
         {
             ((MaskedTextBox)sender).SelectionStart = 0;

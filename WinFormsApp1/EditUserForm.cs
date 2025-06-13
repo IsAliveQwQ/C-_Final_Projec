@@ -19,16 +19,14 @@ namespace WinFormsApp1
             this.Username = username;
             this.Status = status;
 
-            // 設置表單標題
+            
             this.Text = "編輯用戶";
-
-            // 初始化控件
             txtUsername.Text = username;
             txtPassword.Text = password;
             cmbStatus.Items.AddRange(new string[] { "正常", "凍結" });
             cmbStatus.SelectedItem = status == "正常" ? "正常" : "凍結";
 
-            // 設置字體
+            
             this.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
             lblUsername.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
             lblPassword.Font = new System.Drawing.Font("Microsoft JhengHei UI", 10.5F);
@@ -50,13 +48,12 @@ namespace WinFormsApp1
                 MessageBox.Show("所有欄位皆必填！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            // 用戶名長度與格式
+            
             if (newUsername.Length < 4 || !System.Text.RegularExpressions.Regex.IsMatch(newUsername, "^[A-Za-z0-9]+$"))
             {
                 MessageBox.Show("用戶名必須為4位以上英數字！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            // 檢查用戶名唯一（排除自己）
             string checkSql = "SELECT COUNT(*) FROM user WHERE username = @username AND user_id <> @uid";
             var checkParams = new[] {
                 new MySqlParameter("@username", newUsername),
@@ -68,7 +65,7 @@ namespace WinFormsApp1
                 MessageBox.Show("用戶名已存在，請更換！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            // 密碼可空，但若有填寫需檢查格式
+            
             if (!string.IsNullOrEmpty(newPassword))
             {
                 if (newPassword.Length < 4 || !System.Text.RegularExpressions.Regex.IsMatch(newPassword, "^[A-Za-z0-9]+$"))

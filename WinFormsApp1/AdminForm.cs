@@ -1,17 +1,16 @@
 using System.Windows.Forms;
 using MySql.Data.MySqlClient;
 using System.Collections.Generic;
-using System; // Ensure System is included for EventArgs
 using System.Drawing;
 using System.Threading.Tasks;
 
-#nullable disable  // 禁用 nullable reference types 檢查
+#nullable disable  
 
 namespace WinFormsApp1
 {
     public partial class AdminForm : Form
     {
-        // 分頁相關常數
+        // 分頁參數
         private const int PageSize = 15;
         private const string DefaultSearchType = "用戶";
 
@@ -144,7 +143,7 @@ namespace WinFormsApp1
             this.btnLogNext.Click += btnLogNext_Click;
         }
 
-        // 新增漫畫按鈕點擊事件處理器
+        // 漫畫按鈕點擊事件處理器
         private async void btnAddComic_Click(object sender, EventArgs e)
         {
             using (AddComicForm addComicForm = new AddComicForm())
@@ -157,9 +156,9 @@ namespace WinFormsApp1
                     string publisher = addComicForm.ComicPublisher;
                     string category = addComicForm.ComicCategory;
                     string imageUrl = addComicForm.ImageUrl;
-                    string offerDate = addComicForm.OfferDate; // 獲取發售日
-                    string pages = addComicForm.Pages; // 獲取頁數
-                    string bookSummary = addComicForm.BookSummary; // 獲取摘要
+                    string offerDate = addComicForm.OfferDate; 
+                    string pages = addComicForm.Pages; 
+                    string bookSummary = addComicForm.BookSummary; 
 
                     try
                     {
@@ -172,9 +171,9 @@ namespace WinFormsApp1
                             new MySqlParameter("@publisher", publisher),
                             new MySqlParameter("@category", category),
                             new MySqlParameter("@image_path", imageUrl ?? (object)DBNull.Value),
-                            new MySqlParameter("@offer_date", offerDate ?? (object)DBNull.Value), // 添加發售日參數
-                            new MySqlParameter("@pages", pages ?? (object)DBNull.Value), // 添加頁數參數
-                            new MySqlParameter("@book_summary", bookSummary ?? (object)DBNull.Value) // 添加摘要參數
+                            new MySqlParameter("@offer_date", offerDate ?? (object)DBNull.Value), 
+                            new MySqlParameter("@pages", pages ?? (object)DBNull.Value), 
+                            new MySqlParameter("@book_summary", bookSummary ?? (object)DBNull.Value) 
                         };
                         int rowsAffected = DBHelper.ExecuteNonQuery(sql, parameters);
                         if (rowsAffected > 0)
@@ -210,7 +209,7 @@ namespace WinFormsApp1
         {
             try
             {
-                // 初始化載入時，不使用分頁
+                
                 await RefreshUserRecordsAsync(applyPagination: false);
                 await RefreshComicRecordsAsync(applyPagination: false);
 
@@ -219,7 +218,7 @@ namespace WinFormsApp1
                 await RefreshBorrowRecordsAsync();
                 await RefreshReserveRecordsAsync();
 
-                // 載入管理日誌
+                
                 await RefreshLogRecordsAsync();
             }
             catch (Exception ex)
@@ -271,7 +270,7 @@ namespace WinFormsApp1
             }
         }
 
-        // 取得目前資料庫名稱（for debug）
+        
         private string GetCurrentDatabaseName()
         {
             try
@@ -319,15 +318,15 @@ namespace WinFormsApp1
                         var row = dt.Rows[0];
                         deletedUserName = row["username"].ToString();
                     }
-                    // 先刪除該用戶在 borrow_record 表中的相關記錄
+                    
                     string sqlDeleteBorrow = "DELETE FROM borrow_record WHERE user_id = @uid";
                     MySqlParameter[] pBorrow = { new MySqlParameter("@uid", userId) };
                     DBHelper.ExecuteNonQuery(sqlDeleteBorrow, pBorrow);
-                    // 再刪除該用戶在 reservation 表中的相關記錄 (如果存在)
+
                     string sqlDeleteReserve = "DELETE FROM reservation WHERE user_id = @uid";
                     MySqlParameter[] pReserve = { new MySqlParameter("@uid", userId) };
                     DBHelper.ExecuteNonQuery(sqlDeleteReserve, pReserve);
-                    // 最後刪除用戶記錄
+
                     string sql = "DELETE FROM user WHERE user_id = @uid";
                     MySqlParameter[] p = { new MySqlParameter("@uid", userId) };
                     int rows = DBHelper.ExecuteNonQuery(sql, p);
@@ -353,7 +352,7 @@ namespace WinFormsApp1
         // 用戶管理分頁
         private async Task RefreshUserRecordsAsync(
             string keyword = null,
-            string searchType = "用戶名", // 新增 searchType 參數，預設用戶名
+            string searchType = "用戶名", 
             bool applyPagination = true,
             int page = 1)
         {
@@ -429,20 +428,15 @@ namespace WinFormsApp1
         // 用戶搜尋按鈕點擊事件
         private async void btnUserSearch_Click(object sender, EventArgs e)
         {
-            // currentUserSearchKeyword = txtSearchUser.Text.Trim(); // 更新當前搜尋關鍵字 - Removed
             string searchTerm = txtSearchUser.Text.Trim();
             string searchType = cmbUserSearchType.SelectedItem?.ToString() ?? "用戶名"; // 預設用戶名搜尋
-            // currentUserSearchType = searchType; // 更新當前搜尋類型 (如果需要儲存以便刷新) - Removed
-            // currentUserPage = 1; // 重置到第一頁 - Removed
-
-            // 呼叫修改後的 RefreshUserRecordsAsync 方法
+            
             await RefreshUserRecordsAsync(keyword: searchTerm, searchType: searchType, applyPagination: false);
         }
 
         private async void btnRefreshUser_Click(object sender, EventArgs e)
         {
-            // 直接使用當前的搜尋條件和頁碼刷新 - Reverted to original behavior
-            // This now just refreshes the list, effectively clearing any search filter
+           
             await RefreshUserRecordsAsync(applyPagination: false);
         }
 
@@ -515,7 +509,6 @@ namespace WinFormsApp1
             {
                 try
                 {
-                    // 查詢原始資料
                     string sqlQuery = "SELECT isbn, title, author, publisher, category, image_path, offer_date, pages, book_summary FROM comic WHERE comic_id = @cid";
                     MySqlParameter[] pQuery = { new MySqlParameter("@cid", comicId) };
                     var dt = DBHelper.ExecuteQuery(sqlQuery, pQuery);
@@ -529,9 +522,9 @@ namespace WinFormsApp1
                         oldPublisher = row["publisher"].ToString();
                         oldCategory = row["category"].ToString();
                         oldImagePath = row["image_path"]?.ToString();
-                        oldOfferDate = row["offer_date"]?.ToString(); // 獲取舊的發售日
-                        oldPages = row["pages"]?.ToString(); // 獲取舊的頁數
-                        oldBookSummary = row["book_summary"]?.ToString(); // 獲取舊的摘要
+                        oldOfferDate = row["offer_date"]?.ToString(); 
+                        oldPages = row["pages"]?.ToString(); 
+                        oldBookSummary = row["book_summary"]?.ToString(); 
                     }
                     string sql = "DELETE FROM comic WHERE comic_id = @cid";
                     MySqlParameter[] p = { new MySqlParameter("@cid", comicId) };
@@ -555,7 +548,7 @@ namespace WinFormsApp1
             }
         }
 
-        // 用戶管理分頁操作按鈕事件
+        // 用戶管理分頁-按鈕事件
         private void dgvUser_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -564,7 +557,7 @@ namespace WinFormsApp1
             var username = dgvUser.Rows[e.RowIndex].Cells["用戶名"].Value.ToString();
             if (colName == "查看借閱紀錄")
             {
-                dgvBorrow.DataSource = null; // 先清空，避免閃現舊資料
+                dgvBorrow.DataSource = null; 
                 tabAdmin.SelectedTab = tabBorrow;
                 txtBorrowKeyword.Text = username;
                 cmbBorrowSearchType.SelectedItem = "用戶";
@@ -572,7 +565,7 @@ namespace WinFormsApp1
             }
             else if (colName == "查看預約紀錄")
             {
-                dgvReserve.DataSource = null; // 先清空，避免閃現舊資料
+                dgvReserve.DataSource = null; 
                 tabAdmin.SelectedTab = tabReserve;
                 txtReserveKeyword.Text = username;
                 cmbReserveSearchType.SelectedItem = "用戶";
@@ -580,7 +573,7 @@ namespace WinFormsApp1
             }
         }
 
-        // 借閱紀錄分頁操作按鈕事件
+        // 借閱紀錄分頁-按鈕事件
         private async void dgvBorrow_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -608,12 +601,12 @@ namespace WinFormsApp1
                     string comicTitle = borrowRow.Cells["書名"].Value.ToString();
                     WriteLogEntry("歸還漫畫", $"用戶={userName}, 書名={comicTitle}");
                     AdminForm_Load(null, null);
-                    await RefreshLogRecordsAsync(); // 刷新日誌列表
+                    await RefreshLogRecordsAsync(); 
                 }
             }
         }
 
-        // 預約紀錄分頁操作按鈕事件
+        // 預約紀錄分頁-按鈕事件
         private async void dgvReserve_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -651,7 +644,7 @@ namespace WinFormsApp1
             }
         }
 
-        // 新增借書冷卻期檢查方法
+        // 借書冷卻期檢查
         private bool IsUserInCoolingPeriod(int userId, int comicId)
         {
             string sql = @"
@@ -671,7 +664,7 @@ namespace WinFormsApp1
             return count > 0;
         }
 
-        // 新增預約冷卻期檢查方法
+        // 預約冷卻期檢查
         private bool IsUserInReservationCoolingPeriod(int userId, int comicId)
         {
             string sql = @"
@@ -690,7 +683,7 @@ namespace WinFormsApp1
             return count > 0;
         }
 
-        // 修改預約按鈕點擊事件，加入借書冷卻期與預約冷卻期檢查
+       
         private void btnReserve_Click(object sender, EventArgs e)
         {
             // 用戶自己預約時的邏輯
@@ -714,7 +707,7 @@ namespace WinFormsApp1
                 return;
             }
 
-            // 繼續預約邏輯...
+            
         }
 
         private async Task RefreshBorrowRecordsAsync()
@@ -744,13 +737,11 @@ namespace WinFormsApp1
                     paramList.Add(new MySqlParameter("@keyword", currentBorrowSearchKeyword));
                 }
 
-                // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE
                 string countSql = @"SELECT COUNT(*)
                                     FROM borrow_record b
                                     JOIN user u ON b.user_id = u.user_id
                                     JOIN comic c ON b.comic_id = c.comic_id
                                     WHERE 1=1";
-                // 將搜尋條件也應用到計數 SQL
                 if (!string.IsNullOrWhiteSpace(currentBorrowSearchKeyword))
                 {
                     string field = currentBorrowSearchType switch
@@ -761,12 +752,10 @@ namespace WinFormsApp1
                         _ => "u.username"
                     };
                     countSql += $" AND {field} LIKE @keyword";
-                    // 參數列表已經包含 @keyword，無需重複添加
                 }
 
                 long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, paramList.ToArray()));
 
-                // 添加分頁參數到主查詢
                 sql += " ORDER BY b.borrow_date DESC LIMIT @offset, @pageSize";
                 paramList.Add(new MySqlParameter("@offset", (currentBorrowPage - 1) * PageSize));
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
@@ -779,7 +768,7 @@ namespace WinFormsApp1
                     dgvBorrow.DataSource = dt;
                     SetBorrowGridColumnWidths();
                     dgvBorrow.Refresh();
-                    // 更新分頁控制項
+
                     lblBorrowPage.Text = $"第 {currentBorrowPage} 頁";
                     btnBorrowPrev.Enabled = currentBorrowPage > 1;
                     btnBorrowNext.Enabled = (currentBorrowPage * PageSize) < totalRecords;
@@ -826,13 +815,11 @@ namespace WinFormsApp1
                     paramList.Add(new MySqlParameter("@keyword", currentReserveSearchKeyword));
                 }
 
-                // 重新構造用於計數的 SQL，只包含 FROM, JOIN, WHERE
                 string countSql = @"SELECT COUNT(*)
                                     FROM reservation r
                                     JOIN user u ON r.user_id = u.user_id
                                     JOIN comic c ON r.comic_id = c.comic_id
                                     WHERE 1=1";
-                // 將搜尋條件也應用到計數 SQL
                 if (!string.IsNullOrWhiteSpace(currentReserveSearchKeyword))
                 {
                     string field = currentReserveSearchType switch
@@ -843,12 +830,10 @@ namespace WinFormsApp1
                         _ => "u.username"
                     };
                     countSql += $" AND {field} LIKE @keyword";
-                    // 參數列表已經包含 @keyword，無需重複添加
                 }
 
                 long totalRecords = Convert.ToInt64(DBHelper.ExecuteScalar(countSql, paramList.ToArray()));
 
-                // 添加分頁參數到主查詢
                 sql += " ORDER BY r.reservation_date DESC LIMIT @offset, @pageSize";
                 paramList.Add(new MySqlParameter("@offset", (currentReservePage - 1) * PageSize));
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
@@ -861,7 +846,7 @@ namespace WinFormsApp1
                     dgvReserve.DataSource = dt;
                     SetReserveGridColumnWidths();
                     dgvReserve.Refresh();
-                    // 更新分頁控制項
+
                     lblReservePage.Text = $"第 {currentReservePage} 頁";
                     btnReservePrev.Enabled = currentReservePage > 1;
                     btnReserveNext.Enabled = (currentReservePage * PageSize) < totalRecords;
@@ -875,7 +860,6 @@ namespace WinFormsApp1
 
         private async Task InitializeAllDataAsync()
         {
-            // 此方法不再用於 AdminForm_Load，但可能在其他地方被呼叫，暫時保留，但其邏輯已轉移
             try
             {
                 await Task.WhenAll(
@@ -896,12 +880,11 @@ namespace WinFormsApp1
         {
             lblPage.Text = $"第 {currentPage} 頁";
             btnPrev.Enabled = currentPage > 1;
-            btnNext.Enabled = dgv.Rows.Count == PageSize; // 根據返回的記錄數判斷是否有下一頁
+            btnNext.Enabled = dgv.Rows.Count == PageSize; 
         }
 
         private void ResetSearchParameters()
         {
-            // currentUserSearchKeyword = ""; // Removed as it's no longer used to store state
             currentComicSearchKeyword = "";
             currentBorrowSearchKeyword = "";
             currentReserveSearchKeyword = "";
@@ -913,7 +896,6 @@ namespace WinFormsApp1
 
         private void EnsureUserActionButtons()
         {
-            // 避免重複加入
             if (dgvUser.Columns["查看借閱紀錄"] == null)
             {
                 var btnBorrow = new DataGridViewButtonColumn();
@@ -974,7 +956,6 @@ namespace WinFormsApp1
         }
         private void SetBorrowGridColumnWidths()
         {
-            // 明確設定各欄位寬度，只讓書名自動填滿
             if (dgvBorrow.Columns.Contains("編號")) dgvBorrow.Columns["編號"].Width = 60;
             if (dgvBorrow.Columns.Contains("用戶")) dgvBorrow.Columns["用戶"].Width = 100;
             if (dgvBorrow.Columns.Contains("ISBN")) dgvBorrow.Columns["ISBN"].Width = 120; // 參考 UserForm 設定
@@ -982,19 +963,16 @@ namespace WinFormsApp1
             if (dgvBorrow.Columns.Contains("歸還日期")) dgvBorrow.Columns["歸還日期"].Width = 160;
             if (dgvBorrow.Columns.Contains("狀態")) dgvBorrow.Columns["狀態"].Width = 80;
 
-            // 讓書名自動填滿剩餘空間
             if (dgvBorrow.Columns.Contains("書名"))
             {
                 dgvBorrow.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             }
 
-            // 確保狀態欄位在最後
             if (dgvBorrow.Columns.Contains("狀態"))
             {
                 dgvBorrow.Columns["狀態"].DisplayIndex = dgvBorrow.Columns.Count - 1;
             }
 
-            // 將其他未明確設定寬度的欄位 AutoSizeMode 設為 None，防止擠壓
             foreach (DataGridViewColumn col in dgvBorrow.Columns)
             {
                 if (!new[] { "編號", "用戶", "書名", "ISBN", "借閱日期", "歸還日期", "狀態" }.Contains(col.Name))
@@ -1005,7 +983,6 @@ namespace WinFormsApp1
         }
         private void SetReserveGridColumnWidths()
         {
-            // 明確設定各欄位寬度
             if (dgvReserve.Columns.Contains("編號")) dgvReserve.Columns["編號"].Width = 60;
             if (dgvReserve.Columns.Contains("用戶")) dgvReserve.Columns["用戶"].Width = 100;
             if (dgvReserve.Columns.Contains("ISBN")) dgvReserve.Columns["ISBN"].Width = 120;
@@ -1013,13 +990,11 @@ namespace WinFormsApp1
             if (dgvReserve.Columns.Contains("預約到期時間")) dgvReserve.Columns["預約到期時間"].Width = 160;
             if (dgvReserve.Columns.Contains("狀態")) dgvReserve.Columns["狀態"].Width = 80;
 
-            // 讓書名自動填滿剩餘空間
             if (dgvReserve.Columns.Contains("書名"))
             {
                 dgvReserve.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             }
 
-            // 設定顯示順序
             if (dgvReserve.Columns.Contains("編號")) dgvReserve.Columns["編號"].DisplayIndex = 0;
             if (dgvReserve.Columns.Contains("用戶")) dgvReserve.Columns["用戶"].DisplayIndex = 1;
             if (dgvReserve.Columns.Contains("書名")) dgvReserve.Columns["書名"].DisplayIndex = 2;
@@ -1028,18 +1003,16 @@ namespace WinFormsApp1
             if (dgvReserve.Columns.Contains("預約到期時間")) dgvReserve.Columns["預約到期時間"].DisplayIndex = 5;
             if (dgvReserve.Columns.Contains("狀態")) dgvReserve.Columns["狀態"].DisplayIndex = 6;
 
-            // 確保其他欄位沒有 AutoSizeMode.Fill
             foreach (DataGridViewColumn col in dgvReserve.Columns)
             {
                 if (col.Name != "書名")
                 {
-                    col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; // 確保其他欄位不自動填充
+                    col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; 
                 }
             }
         }
         private void SetComicGridColumnWidths()
         {
-            // 設置固定寬度欄位
             if (dgvComic.Columns.Contains("書號"))
             {
                 dgvComic.Columns["書號"].Width = 80;
@@ -1053,7 +1026,6 @@ namespace WinFormsApp1
                 dgvComic.Columns["ISBN"].DisplayIndex = 2;
             }
 
-            // 設置自動填滿欄位
             if (dgvComic.Columns.Contains("書名"))
             {
                 dgvComic.Columns["書名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
@@ -1077,7 +1049,6 @@ namespace WinFormsApp1
         }
         #endregion
 
-        // 修改漫畫按鈕點擊事件處理器
         private async void btnEditComic_Click(object sender, EventArgs e)
         {
             if (dgvComic.CurrentRow == null)
@@ -1106,9 +1077,9 @@ namespace WinFormsApp1
                 oldPublisher = row["publisher"].ToString();
                 oldCategory = row["category"].ToString();
                 oldImagePath = row["image_path"]?.ToString();
-                oldOfferDate = row["offer_date"]?.ToString(); // 獲取舊的發售日
-                oldPages = row["pages"]?.ToString(); // 獲取舊的頁數
-                oldBookSummary = row["book_summary"]?.ToString(); // 獲取舊的摘要
+                oldOfferDate = row["offer_date"]?.ToString(); 
+                oldPages = row["pages"]?.ToString(); 
+                oldBookSummary = row["book_summary"]?.ToString(); 
             }
 
             using (EditComicForm editComicForm = new EditComicForm(comicId, isbn, title, author, publisher, category, oldImagePath, oldOfferDate, oldPages, oldBookSummary))
@@ -1181,7 +1152,6 @@ namespace WinFormsApp1
             }
         }
 
-        // 新增方法：根據用戶ID獲取用戶名
         private string GetUsernameById(int userId)
         {
             try
@@ -1246,7 +1216,6 @@ namespace WinFormsApp1
                     dgvComic.DataSource = dt;
                     SetComicGridColumnWidths();
                     dgvComic.Refresh();
-                    // 分頁控制
                     if (lblComicPage != null && btnComicPrev != null && btnComicNext != null)
                     {
                         string countSql = "SELECT COUNT(*) FROM comic WHERE 1=1";
@@ -1283,7 +1252,6 @@ namespace WinFormsApp1
             }
         }
 
-        // 編輯用戶按鈕點擊事件
         private async void btnEditUser_Click(object sender, EventArgs e)
         {
             if (dgvUser.CurrentRow == null)
@@ -1296,20 +1264,17 @@ namespace WinFormsApp1
             string status = dgvUser.CurrentRow.Cells["狀態"].Value.ToString();
             string role = dgvUser.CurrentRow.Cells["角色"].Value.ToString();
 
-            // 檢查是否為自己
             if (userId == currentUserId)
             {
                 MessageBox.Show("不能修改自己的帳號！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            // 檢查是否為管理員
             if (role == "admin")
             {
                 MessageBox.Show("不能修改管理員帳號！", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            // 查詢原始資料
             string sqlQuery = "SELECT username, status, password_hash FROM user WHERE user_id = @uid";
             MySqlParameter[] pQuery = { new MySqlParameter("@uid", userId) };
             var dt = DBHelper.ExecuteQuery(sqlQuery, pQuery);
@@ -1368,7 +1333,7 @@ namespace WinFormsApp1
             }
         }
 
-        // 管理日誌搜尋按鈕點擊事件
+        // 管理日誌搜尋按鈕
         private async void btnLogSearch_Click(object sender, EventArgs e)
         {
             string searchTerm = txtLogKeyword.Text.Trim();
@@ -1389,14 +1354,12 @@ namespace WinFormsApp1
                     paramList.Add(new MySqlParameter("@keyword", "%" + keyword + "%"));
                 }
 
-                // 分頁查詢
                 sql += " ORDER BY action_timestamp DESC LIMIT @offset, @pageSize";
                 paramList.Add(new MySqlParameter("@offset", (currentLogPage - 1) * PageSize));
                 paramList.Add(new MySqlParameter("@pageSize", PageSize));
 
                 var dt = await Task.Run(() => DBHelper.ExecuteQuery(sql, paramList.ToArray()));
 
-                // 查詢總數
                 string countSql = "SELECT COUNT(*) FROM admin_log al JOIN user u ON al.admin_user_id = u.user_id WHERE 1=1";
                 var countParamList = new List<MySqlParameter>();
                 if (!string.IsNullOrWhiteSpace(keyword))
@@ -1412,7 +1375,7 @@ namespace WinFormsApp1
                     dgvLog.DataSource = dt;
                     SetLogGridColumnWidths();
                     dgvLog.Refresh();
-                    // 分頁控制
+
                     lblLogPage.Text = $"第 {currentLogPage} 頁";
                     btnLogPrev.Enabled = currentLogPage > 1;
                     btnLogNext.Enabled = (currentLogPage * PageSize) < totalRecords;
@@ -1424,7 +1387,6 @@ namespace WinFormsApp1
             }
         }
 
-        // 寫入管理日誌
         private void WriteLogEntry(string actionType, string actionDetails)
         {
             try
@@ -1439,12 +1401,11 @@ namespace WinFormsApp1
             }
             catch (Exception ex)
             {
-                // 在這裡可以選擇記錄錯誤到檔案或控制台，避免因為日誌寫入失敗而影響主要操作
-                System.Diagnostics.Debug.WriteLine($"寫入日誌時發生錯誤: {ex.Message}");
+                
+                System.Diagnostics.Debug.WriteLine($"發生錯誤: {ex.Message}");
             }
         }
 
-        // 設定日誌 DataGridView 列寬 (稍後在 AdminForm.Designer.cs 中實現)
         private void SetLogGridColumnWidths()
         {
             if (dgvLog.Columns.Contains("時間")) { dgvLog.Columns["時間"].Width = 150; }
@@ -1497,7 +1458,6 @@ namespace WinFormsApp1
             await RefreshLogRecordsAsync();
         }
 
-        // 新增方法：根據用戶名查詢新插入的用戶ID
         private int GetInsertedUserId(string username)
         {
             string sql = "SELECT user_id FROM user WHERE username = @username ORDER BY user_id DESC LIMIT 1";
